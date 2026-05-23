@@ -9,6 +9,7 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
     { to: '/attendance', label: 'Attendance' },
     { to: '/evaluations', label: 'Evaluations' },
     { to: '/reports', label: 'Reports' },
+    { to: '/certificates', label: 'Certificates' },
   ];
 
   // Desktop sidebar

@@ -8,6 +8,7 @@ import Trainings from './pages/Trainings';
 import Attendance from './pages/Attendance';
 import Evaluations from './pages/Evaluations';
 import Reports from './pages/Reports';
+import CertificateGenerator from './pages/CertificateGenerator';
 import Login from './pages/Login';
 
 function RequireAuth({ children }) {
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="attendance" element={<Attendance />} />
           <Route path="evaluations" element={<Evaluations />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="certificates" element={<CertificateGenerator />} />
         </Route>
       </Routes>
     </BrowserRouter>
@@ -41,7 +43,7 @@ function Layout() {
   return (
     <div className="min-h-screen flex bg-slate-50">
       <Sidebar open={open} onClose={() => setOpen(false)} />
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden">
         <header className="md:hidden bg-white border-b p-3 flex items-center justify-between">
           <button className="p-2 rounded-md" onClick={() => setOpen(true)} aria-label="Open menu">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
