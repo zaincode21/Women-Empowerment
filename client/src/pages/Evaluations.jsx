@@ -3,7 +3,7 @@ import { createEvaluation, getEvaluations, getParticipants } from '../lib/api';
 import Modal from '../components/Modal';
 import ViewToggle from '../components/ViewToggle';
 
-const empty = { participant_id: '', progress: '', remarks: '' };
+const empty = { participant_id: '', progress: '', remarks: '', achievements: '', follow_up: '', next_review_at: '' };
 
 export default function Evaluations() {
   const [list, setList] = useState([]);
@@ -31,7 +31,14 @@ export default function Evaluations() {
 
   async function submit(e) {
     e.preventDefault();
-    await createEvaluation({ participant_id: Number(form.participant_id), progress: form.progress, remarks: form.remarks });
+    await createEvaluation({
+      participant_id: Number(form.participant_id),
+      progress: form.progress,
+      remarks: form.remarks,
+      achievements: form.achievements,
+      follow_up: form.follow_up,
+      next_review_at: form.next_review_at,
+    });
     setForm(empty);
     setOpen(false);
     await refresh();
@@ -62,6 +69,8 @@ export default function Evaluations() {
                     <tr className="bg-slate-50 text-left">
                       <th className="p-3 border">Participant</th>
                       <th className="p-3 border">Progress</th>
+                      <th className="p-3 border">Achievements</th>
+                      <th className="p-3 border">Follow-up</th>
                       <th className="p-3 border">Remarks</th>
                       <th className="p-3 border">Date</th>
                     </tr>
@@ -71,6 +80,8 @@ export default function Evaluations() {
                       <tr key={e.id} className="odd:bg-white even:bg-slate-50">
                         <td className="p-3 border align-middle">{e.participant_name}</td>
                         <td className="p-3 border align-middle">{e.progress}</td>
+                        <td className="p-3 border align-middle">{e.achievements}</td>
+                        <td className="p-3 border align-middle">{e.follow_up}</td>
                         <td className="p-3 border align-middle">{e.remarks}</td>
                         <td className="p-3 border align-middle">{formatDateTime(e.created_at)}</td>
                       </tr>
@@ -86,6 +97,8 @@ export default function Evaluations() {
                       <tr className="bg-slate-50 text-left">
                         <th className="p-3 border">Participant</th>
                         <th className="p-3 border">Progress</th>
+                        <th className="p-3 border">Achievements</th>
+                        <th className="p-3 border">Follow-up</th>
                         <th className="p-3 border">Remarks</th>
                         <th className="p-3 border">Date</th>
                       </tr>
@@ -95,6 +108,8 @@ export default function Evaluations() {
                         <tr key={e.id} className="odd:bg-white even:bg-slate-50">
                           <td className="p-3 border align-middle">{e.participant_name}</td>
                           <td className="p-3 border align-middle">{e.progress}</td>
+                          <td className="p-3 border align-middle">{e.achievements}</td>
+                          <td className="p-3 border align-middle">{e.follow_up}</td>
                           <td className="p-3 border align-middle">{e.remarks}</td>
                           <td className="p-3 border align-middle">{formatDateTime(e.created_at)}</td>
                         </tr>
@@ -119,6 +134,10 @@ export default function Evaluations() {
                       <div className="mt-3 text-sm text-slate-600">
                         <div className="text-xs text-slate-500">Remarks</div>
                         <div>{e.remarks}</div>
+                        <div className="mt-2 text-xs text-slate-500">Achievements</div>
+                        <div>{e.achievements}</div>
+                        <div className="mt-2 text-xs text-slate-500">Follow-up</div>
+                        <div>{e.follow_up}</div>
                         <div className="mt-2 text-xs text-slate-500">Date</div>
                         <div>{formatDateTime(e.created_at)}</div>
                       </div>
@@ -138,6 +157,9 @@ export default function Evaluations() {
             {participants.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
           </select>
           <input required placeholder="Progress" value={form.progress} onChange={(e) => setForm({ ...form, progress: e.target.value })} className="rounded border p-2" />
+          <input placeholder="Achievements" value={form.achievements} onChange={(e) => setForm({ ...form, achievements: e.target.value })} className="rounded border p-2" />
+          <input placeholder="Follow-up actions" value={form.follow_up} onChange={(e) => setForm({ ...form, follow_up: e.target.value })} className="rounded border p-2" />
+          <input type="datetime-local" placeholder="Next review" value={form.next_review_at} onChange={(e) => setForm({ ...form, next_review_at: e.target.value })} className="rounded border p-2" />
           <textarea placeholder="Remarks" value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} className="sm:col-span-2 rounded border p-2" />
           <div className="sm:col-span-2 flex justify-end gap-2 mt-2">
             <button className="rounded border px-4 py-2" type="button" onClick={() => { setForm(empty); setOpen(false); }}>Cancel</button>

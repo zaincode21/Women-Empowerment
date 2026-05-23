@@ -4,24 +4,32 @@ const db = require('../db');
 const { authenticate } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
+function calculateAge(dateOfBirth) {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age -= 1;
+  return Math.max(0, age);
+}
+
 router.post('/', authenticate,
   body('full_name').notEmpty(),
-  body('date_of_birth').isISO8601(),
+  body('age').optional({ nullable: true }).isInt({ min: 0 }),
+  body('date_of_birth').optional({ nullable: true }).isISO8601(),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     const { full_name, address, phone_number, education_level, occupation } = req.body;
-    const dateOfBirth = req.body.date_of_birth ? new Date(req.body.date_of_birth) : null;
-    const age = dateOfBirth && !Number.isNaN(dateOfBirth.getTime())
-      ? Math.max(0, new Date().getFullYear() - dateOfBirth.getFullYear() -
-        (new Date().getMonth() > dateOfBirth.getMonth() ||
-        (new Date().getMonth() === dateOfBirth.getMonth() && new Date().getDate() >= dateOfBirth.getDate()) ? 0 : 1))
-      : null;
+    const age = req.body.age !== undefined && req.body.age !== '' ? Number(req.body.age) : calculateAge(req.body.date_of_birth);
+    const dateOfBirth = req.body.date_of_birth || null;
     try {
       const result = await db.query(
         `INSERT INTO participants (full_name, age, date_of_birth, village, cell, sector, district, province, address, phone_number, education_level, occupation)
           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-        [full_name, age, req.body.date_of_birth, req.body.village, req.body.cell, req.body.sector, req.body.district, req.body.province, address, phone_number, education_level, occupation]
+        [full_name, age, dateOfBirth, req.body.village, req.body.cell, req.body.sector, req.body.district, req.body.province, address, phone_number, education_level, occupation]
       );
       res.json(result.rows[0]);
     } catch (err) {
@@ -58,12 +66,14 @@ router.get('/:id', async (req, res) => {
 });
 
 router.put('/:id', authenticate, async (req, res) => {
-  const { full_name, date_of_birth, village, cell, sector, district, province, address, phone_number, education_level, occupation } = req.body;
+  const { full_name, village, cell, sector, district, province, address, phone_number, education_level, occupation } = req.body;
+  const age = req.body.age !== undefined && req.body.age !== '' ? Number(req.body.age) : calculateAge(req.body.date_of_birth);
+  const dateOfBirth = req.body.date_of_birth || null;
   try {
     const result = await db.query(
-      `UPDATE participants SET full_name=$1, date_of_birth=$2, village=$3, cell=$4, sector=$5, district=$6, province=$7, address=$8, phone_number=$9, education_level=$10, occupation=$11
-       WHERE id=$12 RETURNING *`,
-      [full_name, date_of_birth, village, cell, sector, district, province, address, phone_number, education_level, occupation, req.params.id]
+      `UPDATE participants SET full_name=$1, age=$2, date_of_birth=$3, village=$4, cell=$5, sector=$6, district=$7, province=$8, address=$9, phone_number=$10, education_level=$11, occupation=$12
+       WHERE id=$13 RETURNING *`,
+      [full_name, age, dateOfBirth, village, cell, sector, district, province, address, phone_number, education_level, occupation, req.params.id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Not found' });
     res.json(result.rows[0]);

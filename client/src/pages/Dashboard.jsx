@@ -39,6 +39,8 @@ export default function Dashboard() {
   const participants = summary?.participants ?? 0;
   const trainings = summary?.trainings ?? 0;
   const attendance = summary?.attendance ?? 0;
+  const evaluations = summary?.evaluations ?? 0;
+  const trends = summary?.trends || [];
 
   // fallback demo series when API doesn't provide time series
   const demoSeries = [participants - 2, participants - 1, participants, participants + 1, participants + 2].map((n) => Math.max(0, n));
@@ -53,9 +55,22 @@ export default function Dashboard() {
       <div className="flex-1 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard label="Participants" value={participants} delta={2} data={demoSeries} />
-            <StatCard label="Trainings" value={trainings} delta={-1} data={[1,2,3,2,trainings]} />
-            <StatCard label="Attendance" value={attendance} delta={5} data={[attendance - 3, attendance - 1, attendance, attendance + 2, attendance + 5]} />
+            <StatCard label="Participants" value={participants} delta={2} data={trends.length ? trends.map((row) => row.participants) : demoSeries} />
+            <StatCard label="Trainings" value={trainings} delta={-1} data={trends.length ? trends.map((row) => row.trainings) : [1,2,3,2,trainings]} />
+            <StatCard label="Attendance" value={attendance} delta={5} data={trends.length ? trends.map((row) => row.attendance) : [attendance - 3, attendance - 1, attendance, attendance + 2, attendance + 5]} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-lg border bg-white p-4 shadow">
+              <div className="text-xs text-slate-500">Evaluations</div>
+              <div className="mt-2 text-2xl font-bold text-slate-900">{evaluations}</div>
+              <div className="mt-3 text-sm text-slate-500">Recorded progress reviews and follow-ups.</div>
+            </div>
+            <div className="rounded-lg border bg-white p-4 shadow">
+              <div className="text-xs text-slate-500">Report readiness</div>
+              <div className="mt-2 text-2xl font-bold text-slate-900">Ready</div>
+              <div className="mt-3 text-sm text-slate-500">Trend data and exports are available in Reports.</div>
+            </div>
           </div>
 
           <div className="rounded-lg border bg-white p-4 shadow">

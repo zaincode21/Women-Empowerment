@@ -45,6 +45,21 @@ async function fix() {
       await pool.query(sql);
     }
 
+    await pool.query('ALTER TABLE participants ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();');
+
+    await pool.query('ALTER TABLE trainings ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();');
+
+    console.log('Ensuring evaluations table has expected monitoring columns...');
+    const evaluationAlters = [
+      `ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS achievements TEXT;`,
+      `ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS follow_up TEXT;`,
+      `ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS next_review_at TIMESTAMP;`,
+      `ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();`,
+    ];
+    for (const sql of evaluationAlters) {
+      await pool.query(sql);
+    }
+
     console.log('Ensuring attendance table has an expected timestamp column...');
     await pool.query('ALTER TABLE attendance ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();');
 

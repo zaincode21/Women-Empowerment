@@ -69,5 +69,8 @@ CREATE TABLE IF NOT EXISTS evaluations (
   participant_id INT REFERENCES participants(id) ON DELETE CASCADE,
   progress TEXT,
   remarks TEXT,
+  achievements TEXT,
+  follow_up TEXT,
+  next_review_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );

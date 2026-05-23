@@ -4,7 +4,7 @@ import Modal from '../components/Modal';
 import Alert from '../components/Alert';
 import ViewToggle from '../components/ViewToggle';
 
-const empty = { full_name: '', date_of_birth: '', village: '', cell: '', sector: '', district: '', province: '', address: '', phone_number: '', education_level: '', occupation: '' };
+const empty = { full_name: '', age: '', date_of_birth: '', village: '', cell: '', sector: '', district: '', province: '', address: '', phone_number: '', education_level: '', occupation: '' };
 
 export default function Participants() {
   const [list, setList] = useState([]);
@@ -75,7 +75,7 @@ export default function Participants() {
                   <thead>
                     <tr className="bg-slate-50 text-left">
                       <th className="p-3 border">Name</th>
-                      <th className="p-3 border">Date of birth</th>
+                      <th className="p-3 border">Age</th>
                       <th className="p-3 border">Education</th>
                       <th className="p-3 border">Occupation</th>
                       <th className="p-3 border">Phone</th>
@@ -91,7 +91,7 @@ export default function Participants() {
                     {list.map((p) => (
                       <tr key={p.id} className="odd:bg-white even:bg-slate-50">
                         <td className="p-3 border align-middle">{p.full_name}</td>
-                        <td className="p-3 border align-middle">{p.date_of_birth ? new Date(p.date_of_birth).toLocaleDateString() : ''}</td>
+                        <td className="p-3 border align-middle">{p.age ?? ''}</td>
                         <td className="p-3 border align-middle">{p.education_level}</td>
                         <td className="p-3 border align-middle">{p.occupation}</td>
                         <td className="p-3 border align-middle">{p.phone_number}</td>
@@ -119,7 +119,7 @@ export default function Participants() {
                     <thead>
                       <tr className="bg-slate-50 text-left">
                         <th className="p-3 border">Name</th>
-                        <th className="p-3 border">Date of birth</th>
+                        <th className="p-3 border">Age</th>
                         <th className="p-3 border">Education</th>
                         <th className="p-3 border">Occupation</th>
                         <th className="p-3 border">Phone</th>
@@ -135,7 +135,7 @@ export default function Participants() {
                       {list.map((p) => (
                         <tr key={p.id} className="odd:bg-white even:bg-slate-50">
                           <td className="p-3 border align-middle">{p.full_name}</td>
-                          <td className="p-3 border align-middle">{p.date_of_birth ? new Date(p.date_of_birth).toLocaleDateString() : ''}</td>
+                          <td className="p-3 border align-middle">{p.age ?? ''}</td>
                           <td className="p-3 border align-middle">{p.education_level}</td>
                           <td className="p-3 border align-middle">{p.occupation}</td>
                           <td className="p-3 border align-middle">{p.phone_number}</td>
@@ -172,8 +172,8 @@ export default function Participants() {
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-600">
                           <div>
-                            <div className="text-xs text-slate-500">DOB</div>
-                            <div>{p.date_of_birth ? new Date(p.date_of_birth).toLocaleDateString() : ''}</div>
+                            <div className="text-xs text-slate-500">Age</div>
+                            <div>{p.age ?? ''}</div>
                           </div>
                           <div>
                             <div className="text-xs text-slate-500">Education</div>
@@ -205,7 +205,8 @@ export default function Participants() {
       <Modal title={editingId ? 'Edit participant' : 'Create participant'} open={open} onClose={() => setOpen(false)}>
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
           <input required placeholder="Full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="rounded border p-2" />
-          <input required type="date" placeholder="Date of birth" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className="rounded border p-2" />
+          <input required type="number" min="0" placeholder="Age" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className="rounded border p-2" />
+          <input type="date" placeholder="Date of birth (optional)" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className="rounded border p-2" />
           <input placeholder="Village" value={form.village} onChange={(e) => setForm({ ...form, village: e.target.value })} className="rounded border p-2" />
           <input placeholder="Cell" value={form.cell} onChange={(e) => setForm({ ...form, cell: e.target.value })} className="rounded border p-2" />
           <input placeholder="Sector" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} className="rounded border p-2" />

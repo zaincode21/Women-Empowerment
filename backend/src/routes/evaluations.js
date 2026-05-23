@@ -9,11 +9,11 @@ router.post('/', authenticate,
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-    const { participant_id, progress, remarks } = req.body;
+    const { participant_id, progress, remarks, achievements, follow_up, next_review_at } = req.body;
     try {
       const result = await db.query(
-        'INSERT INTO evaluations (participant_id, progress, remarks) VALUES ($1,$2,$3) RETURNING *',
-        [participant_id, progress, remarks]
+        'INSERT INTO evaluations (participant_id, progress, remarks, achievements, follow_up, next_review_at) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+        [participant_id, progress, remarks, achievements || null, follow_up || null, next_review_at || null]
       );
       res.json(result.rows[0]);
     } catch (err) {
@@ -22,6 +22,21 @@ router.post('/', authenticate,
     }
   }
 );
+
+router.get('/', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT e.*, p.full_name as participant_name
+       FROM evaluations e
+       JOIN participants p ON p.id = e.participant_id
+       ORDER BY e.created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 router.get('/participant/:participantId', async (req, res) => {
   try {
