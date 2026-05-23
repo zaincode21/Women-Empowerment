@@ -4,9 +4,7 @@ const db = require('../db');
 const { authenticate } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
-router.use(authenticate);
-
-router.post('/',
+router.post('/', authenticate,
   body('participant_id').isInt(),
   async (req, res) => {
     const errors = validationResult(req);

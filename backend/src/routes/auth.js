@@ -31,6 +31,8 @@ router.post('/login',
   body('username').exists(),
   body('password').exists(),
   async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     const { username, password } = req.body;
     try {
       const result = await db.query('SELECT id, username, password, role FROM users WHERE username=$1', [username]);
@@ -39,7 +41,7 @@ router.post('/login',
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
       const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET || 'secret', { expiresIn: '8h' });
-      res.json({ token });
+      res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Server error' });

@@ -4,9 +4,20 @@ const db = require('../db');
 const { authenticate } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
-router.use(authenticate);
+async function getAttendanceTimestampColumn() {
+  const result = await db.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_name = 'attendance'
+       AND column_name IN ('created_at', 'recorded_at')
+     ORDER BY CASE column_name WHEN 'created_at' THEN 1 ELSE 2 END
+     LIMIT 1`
+  );
 
-router.post('/',
+  return result.rows[0]?.column_name || 'id';
+}
+
+router.post('/', authenticate,
   body('participant_id').isInt(),
   body('training_id').isInt(),
   body('status').notEmpty(),
@@ -26,6 +37,23 @@ router.post('/',
     }
   }
 );
+
+router.get('/', async (req, res) => {
+  try {
+    const timestampColumn = await getAttendanceTimestampColumn();
+    const result = await db.query(
+      `SELECT a.*, p.full_name as participant_name, t.title as training_title
+       FROM attendance a
+       JOIN participants p ON p.id = a.participant_id
+       JOIN trainings t ON t.id = a.training_id
+       ORDER BY a.${timestampColumn} DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 router.get('/training/:trainingId', async (req, res) => {
   try {
