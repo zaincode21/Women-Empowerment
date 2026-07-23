@@ -1,6 +1,17 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import html2canvas from "html2canvas";
-import { getParticipants, getTrainings } from "../lib/api";
+import { getParticipants, getTrainings, getAttendance } from "../lib/api";
+
+const ATTENDED_STATUSES = new Set(["Present", "Late"]);
+
+function computeAttendancePct(records, participantId, trainingId) {
+  const filtered = records.filter(
+    (r) => String(r.participant_id) === String(participantId) && String(r.training_id) === String(trainingId)
+  );
+  if (filtered.length === 0) return null;
+  const attended = filtered.filter((r) => ATTENDED_STATUSES.has(r.status)).length;
+  return Math.round((attended / filtered.length) * 100);
+}
 
 // ─── Palette & Design Tokens ───────────────────────────────────────────────
 const gold = "#C9962C";
@@ -240,6 +251,7 @@ export default function CertificateGenerator() {
 
   const [participants, setParticipants] = useState([]);
   const [trainings, setTrainings] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
 
   const [form, setForm] = useState({
     participantName: "",
@@ -254,15 +266,23 @@ export default function CertificateGenerator() {
   const [participantId, setParticipantId] = useState("");
   const [trainingId, setTrainingId] = useState("");
 
-  // Load participants and trainings from the real API
+  // Load participants, trainings, and attendance from the API
   useEffect(() => {
-    Promise.all([getParticipants(), getTrainings()])
-      .then(([p, t]) => {
+    Promise.all([getParticipants(), getTrainings(), getAttendance()])
+      .then(([p, t, a]) => {
         setParticipants(p);
         setTrainings(t);
+        setAttendanceRecords(a);
       })
       .catch((err) => setLoadError(err.message || "Failed to load data"));
   }, []);
+
+  const hasDbSelection = Boolean(participantId && trainingId);
+  const attendancePct = useMemo(
+    () => (hasDbSelection ? computeAttendancePct(attendanceRecords, participantId, trainingId) : null),
+    [hasDbSelection, attendanceRecords, participantId, trainingId]
+  );
+  const isEligible = !hasDbSelection || (attendancePct !== null && attendancePct >= 80);
 
   // Auto-fill from participant selection
   function handleParticipantChange(id) {
@@ -323,42 +343,25 @@ export default function CertificateGenerator() {
     }
   };
 
-  const isReady = form.participantName && form.trainingTitle && form.date;
+  const isReady = form.participantName && form.trainingTitle && form.date && isEligible;
 
   return (
-    <div style={{
-      fontFamily: "'Segoe UI', sans-serif",
-      background: "#f5f5f0",
-      height: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      overflow: "hidden",
-    }}>
+    <div className="page-shell flex min-h-0 flex-1 flex-col overflow-hidden !p-0" style={{ fontFamily: "'Segoe UI', sans-serif" }}>
 
-      {/* Page title bar */}
-      <div style={{ padding: "20px 28px 16px", flexShrink: 0 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, color: deepNavy }}>Certificate Generator</h1>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
+      <div className="shrink-0 border-b border-slate-200 bg-white px-6 py-4">
+        <h1 className="text-xl font-semibold text-slate-900">Certificate Generator</h1>
+        <p className="mt-1 text-sm text-slate-500">
           Fill in the details below, preview the certificate, then download as PNG.
         </p>
         {loadError && (
-          <div style={{
-            marginTop: 10, padding: "10px 14px", background: "#fff0f0",
-            border: "1px solid #f5c6c6", borderRadius: 8, fontSize: 13, color: "#a00",
-          }}>
-            ⚠ {loadError}
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+            {loadError}
           </div>
         )}
       </div>
 
       {/* Layout: form left, preview right — fills remaining height */}
-      <div style={{
-        flex: 1,
-        display: "grid",
-        gridTemplateColumns: "320px 1fr",
-        gap: 0,
-        overflow: "hidden",
-      }}>
+      <div className="grid min-h-0 flex-1 overflow-hidden" style={{ gridTemplateColumns: '320px 1fr' }}>
 
         {/* ─── Form panel ─────────────────────────────────────────────── */}
         <div style={{
@@ -417,6 +420,19 @@ export default function CertificateGenerator() {
               ))}
             </select>
           </Field>
+
+          {hasDbSelection && (
+            <div style={{
+              marginBottom: 16, padding: "10px 12px", borderRadius: 8, fontSize: 13,
+              background: isEligible ? "#f0fdf4" : "#fff0f0",
+              border: `1px solid ${isEligible ? "#bbf7d0" : "#f5c6c6"}`,
+              color: isEligible ? "#166534" : "#991b1b",
+            }}>
+              {attendancePct === null
+                ? "No attendance records found for this participant and training."
+                : `Attendance: ${attendancePct}% — ${isEligible ? "Eligible for certificate (≥ 80%)" : "Below 80% — not eligible"}`}
+            </div>
+          )}
 
           <Field label="Training title">
             <input style={inputStyle} value={form.trainingTitle}
@@ -481,7 +497,9 @@ export default function CertificateGenerator() {
 
           {!isReady && (
             <p style={{ marginTop: 8, fontSize: 11, color: "#999", textAlign: "center" }}>
-              Fill in name, training, and date to enable download.
+              {hasDbSelection && !isEligible
+                ? "Participant must have ≥ 80% attendance for the selected training."
+                : "Fill in name, training, and date to enable download."}
             </p>
           )}
         </div>

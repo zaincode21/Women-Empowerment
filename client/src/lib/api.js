@@ -21,7 +21,13 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     const message = await response.text().catch(() => '');
-    throw new Error(message || `Request failed with status ${response.status}`);
+    try {
+      const parsed = JSON.parse(message);
+      throw new Error(parsed.error || message || `Request failed with status ${response.status}`);
+    } catch (e) {
+      if (e instanceof Error && e.message && !e.message.startsWith('{')) throw e;
+      throw new Error(message || `Request failed with status ${response.status}`);
+    }
   }
 
   return response.json();
@@ -29,6 +35,48 @@ async function request(path, options = {}) {
 
 export function getSummary() {
   return request('/api/summary');
+}
+
+export function getMonitoringParticipants(q) {
+  const query = q ? `?q=${encodeURIComponent(q)}` : '';
+  return request(`/api/monitoring/participants${query}`);
+}
+
+export function getParticipantMonitoring(id) {
+  return request(`/api/monitoring/participants/${id}`);
+}
+
+export function getMonitoringActivities(params = {}) {
+  const search = new URLSearchParams();
+  if (params.participant_id) search.set('participant_id', params.participant_id);
+  if (params.limit) search.set('limit', params.limit);
+  const query = search.toString();
+  return request(`/api/monitoring/activities${query ? `?${query}` : ''}`);
+}
+
+function reportQuery(params = {}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') search.set(key, value);
+  });
+  const query = search.toString();
+  return query ? `?${query}` : '';
+}
+
+export function getAttendanceReport(params = {}) {
+  return request(`/api/reports/attendance${reportQuery(params)}`);
+}
+
+export function getTrainingsReport(params = {}) {
+  return request(`/api/reports/trainings${reportQuery(params)}`);
+}
+
+export function getProgressReport(params = {}) {
+  return request(`/api/reports/progress${reportQuery(params)}`);
+}
+
+export function getEvaluationsReport(params = {}) {
+  return request(`/api/reports/evaluations${reportQuery(params)}`);
 }
 
 export function getTrainers() {
@@ -55,8 +103,9 @@ export function deleteTrainer(id) {
   });
 }
 
-export function getParticipants() {
-  return request('/api/participants');
+export function getParticipants(q) {
+  const query = q ? `?q=${encodeURIComponent(q)}` : '';
+  return request(`/api/participants${query}`);
 }
 
 export function createParticipant(payload) {
@@ -107,10 +156,40 @@ export function getAttendance() {
   return request('/api/attendance');
 }
 
+export function getTrainingParticipants(trainingId) {
+  return request(`/api/attendance/training/${trainingId}/participants`);
+}
+
+export function enrollTrainingParticipants(trainingId, participantIds) {
+  return request(`/api/attendance/training/${trainingId}/participants`, {
+    method: 'POST',
+    body: JSON.stringify({ participant_ids: participantIds }),
+  });
+}
+
+export function unenrollTrainingParticipant(trainingId, participantId) {
+  return request(`/api/attendance/training/${trainingId}/participants/${participantId}`, {
+    method: 'DELETE',
+  });
+}
+
 export function createAttendance(payload) {
   return request('/api/attendance', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function updateAttendance(id, payload) {
+  return request(`/api/attendance/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAttendance(id) {
+  return request(`/api/attendance/${id}`, {
+    method: 'DELETE',
   });
 }
 
@@ -122,5 +201,49 @@ export function createEvaluation(payload) {
   return request('/api/evaluations', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function updateEvaluation(id, payload) {
+  return request(`/api/evaluations/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteEvaluation(id) {
+  return request(`/api/evaluations/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function getUsers() {
+  return request('/api/auth/users');
+}
+
+export function registerUser(payload) {
+  return request('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateUser(id, payload) {
+  return request(`/api/auth/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteUser(id) {
+  return request(`/api/auth/users/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function resetUserPassword(id, password) {
+  return request(`/api/auth/users/${id}/password`, {
+    method: 'PUT',
+    body: JSON.stringify({ password }),
   });
 }

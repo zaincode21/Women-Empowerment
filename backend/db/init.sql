@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-
 CREATE TABLE IF NOT EXISTS participants (
   id SERIAL PRIMARY KEY,
   full_name VARCHAR(255) NOT NULL,
@@ -27,7 +26,9 @@ CREATE TABLE IF NOT EXISTS participants (
 
 CREATE TABLE IF NOT EXISTS trainers (
   id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255) NOT NULL,
+  phone_number VARCHAR(50),
+  name VARCHAR(255),
   phone VARCHAR(50),
   email VARCHAR(255),
   specialization VARCHAR(255),
@@ -44,6 +45,8 @@ CREATE TABLE IF NOT EXISTS trainings (
   id SERIAL PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   trainer_id INT REFERENCES trainers(id) ON DELETE SET NULL,
+  trainer_name VARCHAR(255),
+  date DATE,
   start_date TIMESTAMP,
   end_date TIMESTAMP,
   village VARCHAR(255),
@@ -54,6 +57,14 @@ CREATE TABLE IF NOT EXISTS trainings (
   location VARCHAR(255),
   description TEXT,
   created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS training_enrollments (
+  id SERIAL PRIMARY KEY,
+  training_id INT NOT NULL REFERENCES trainings(id) ON DELETE CASCADE,
+  participant_id INT NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+  enrolled_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE (training_id, participant_id)
 );
 
 CREATE TABLE IF NOT EXISTS attendance (

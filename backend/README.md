@@ -1,40 +1,52 @@
 # Women Empowerment Backend
 
-Simple Node.js + Express backend for the Women Empowerment Monitoring and Evaluation System.
+Node.js + Express API for the Women Empowerment Monitoring and Evaluation System.
 
-Setup
+## Setup
 
-1. Copy `.env.example` to `.env` and update values.
-2. Install dependencies: `npm install` (from the `backend` folder).
-3. Initialize the database: run the SQL in `db/init.sql` against your Postgres instance.
-4. Start the server: `npm run dev` for development.
+1. Copy `.env.example` to `.env` and set `DATABASE_URL`, `JWT_SECRET`, and optionally `PORT`.
+2. Create a PostgreSQL database: `createdb women_empowerment`
+3. Install dependencies: `npm install`
+4. Initialize schema:
+   ```bash
+   npm run migrate      # runs db/init.sql
+   npm run fix-schema   # patches legacy databases (safe to re-run)
+   npm run seed         # creates admin user (admin / admin123 by default)
+   ```
+5. Start the server: `npm run dev`
 
-Running frontend + backend together
+## Scripts
 
-1. Configure backend `.env` (`DATABASE_URL`, `JWT_SECRET`).
-2. In the `client` folder copy `.env.example` to `.env` and set `VITE_USE_MOCK=false` and `VITE_API_BASE=http://localhost:4000`.
-3. Start the backend:
+| Script            | Description                    |
+|-------------------|--------------------------------|
+| `npm run dev`     | Start with nodemon             |
+| `npm start`       | Start production server        |
+| `npm run migrate` | Apply `db/init.sql`            |
+| `npm run fix-schema` | Patch legacy column drift   |
+| `npm run seed`    | Seed admin user + sample data  |
 
-```bash
-cd backend
-npm install
-npm run dev
-```
+## Running with the frontend
 
-4. Start the frontend in a second terminal:
+1. Start the backend (`npm run dev` in this folder).
+2. In `client/`, copy `.env.example` to `.env` and run `npm run dev`.
+3. The Vite dev server proxies `/api` to port 4000.
 
-```bash
-cd client
-npm install
-npm run dev
-```
+## Authentication
 
-The Vite dev server proxies `/api` to the backend (port 4000) so relative API calls in the frontend will reach the backend.
+- `POST /api/auth/login` — returns JWT + user object
+- `POST /api/auth/register` — bootstrap (first user) or admin-only thereafter
+- `GET /api/auth/users` — list users (administrator only)
 
-Authentication
+All data endpoints require `Authorization: Bearer <token>`.
 
-The frontend supports a mock login mode (default). To enable real backend auth, disable mock in `client/.env` and use the login form to register/login. The login flow will store a JWT in `localStorage` as `we_token` and the frontend will send it as `Authorization: Bearer <token>` for mutating requests.
+## API routes
 
-API
+Implemented under `src/routes/`:
 
-Endpoints are implemented under `src/routes/` (auth, participants, trainings, attendance, evaluations).
+- `auth` — login, register, user list
+- `participants` — CRUD + `?q=` name search
+- `trainers` — CRUD
+- `trainings` — CRUD
+- `attendance` — CRUD
+- `evaluations` — CRUD
+- `GET /api/summary` — dashboard counts, trends, recent activity

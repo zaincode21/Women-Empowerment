@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
 function normalizeTrainer(req) {
@@ -29,7 +29,13 @@ function mapTrainer(row) {
   };
 }
 
-router.post('/', authenticate, body('full_name').custom((value, { req }) => Boolean(value || req.body.name)), async (req, res) => {
+router.use(authenticate);
+router.use((req, res, next) => {
+  const action = ['GET', 'HEAD'].includes(req.method) ? 'read' : 'write';
+  return requirePermission('trainers', action)(req, res, next);
+});
+
+router.post('/', body('full_name').custom((value, { req }) => Boolean(value || req.body.name)), async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const { full_name, phone_number, email, specialization, village, cell, sector, district, province, bio } = normalizeTrainer(req);
@@ -67,7 +73,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', async (req, res) => {
   const { full_name, phone_number, email, specialization, village, cell, sector, district, province, bio } = normalizeTrainer(req);
   try {
     const result = await db.query(
@@ -82,7 +88,7 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM trainers WHERE id=$1', [req.params.id]);
     res.json({ success: true });

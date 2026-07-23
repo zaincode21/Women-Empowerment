@@ -1,10 +1,68 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createParticipant, deleteParticipant, getParticipants, updateParticipant } from '../lib/api';
+import { canWrite, canAccess } from '../lib/auth';
 import Modal from '../components/Modal';
 import Alert from '../components/Alert';
 import ViewToggle from '../components/ViewToggle';
+import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+import EmptyState from '../components/ui/EmptyState';
+import { RowActions } from '../components/ui/RowActions';
+import { inputClassName } from '../components/ui/Field';
 
 const empty = { full_name: '', age: '', date_of_birth: '', village: '', cell: '', sector: '', district: '', province: '', address: '', phone_number: '', education_level: '', occupation: '' };
+
+function ParticipantCard({ p, writable, canViewProfile, onView, onEdit, onDelete }) {
+  const initial = p.full_name?.charAt(0)?.toUpperCase() || '?';
+  return (
+    <article className="surface-card flex h-full flex-col p-4 transition-shadow hover:shadow-md">
+      <div className="flex items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-sm font-bold text-primary-700 ring-1 ring-primary-100">
+          {initial}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-semibold text-slate-900">{p.full_name}</h3>
+          <p className="mt-0.5 truncate text-sm text-slate-500">{p.occupation || 'No occupation'}</p>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+        <div>
+          <dt className="text-xs text-slate-500">Age</dt>
+          <dd className="font-medium text-slate-800">{p.age ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Phone</dt>
+          <dd className="truncate font-medium text-slate-800">{p.phone_number || '—'}</dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-xs text-slate-500">Education</dt>
+          <dd className="truncate font-medium text-slate-800">{p.education_level || '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Village</dt>
+          <dd className="truncate text-slate-700">{p.village || '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Province</dt>
+          <dd className="truncate text-slate-700">{p.province || '—'}</dd>
+        </div>
+      </dl>
+
+      {(writable || canViewProfile) && (
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <RowActions
+            writable={writable}
+            onView={canViewProfile ? onView : undefined}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        </div>
+      )}
+    </article>
+  );
+}
 
 export default function Participants() {
   const [list, setList] = useState([]);
@@ -12,13 +70,22 @@ export default function Participants() {
   const [editingId, setEditingId] = useState(null);
   const [open, setOpen] = useState(false);
   const [alert, setAlert] = useState(null);
-  const [view, setView] = useState('auto');
+  const [view, setView] = useState('cards');
+  const [search, setSearch] = useState('');
+  const writable = canWrite('participants');
+  const canViewProfile = canAccess('monitoring', 'read');
+  const navigate = useNavigate();
 
-  async function refresh() {
-    setList(await getParticipants());
+  async function refresh(q = search) {
+    setList(await getParticipants(q.trim() || undefined));
   }
 
   useEffect(() => { refresh(); }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => refresh(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   async function submit(e) {
     e.preventDefault();
@@ -53,168 +120,108 @@ export default function Participants() {
   }
 
   return (
-    <div className="w-full p-6">
+    <div className="page-shell">
       {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
-      <div className="flex items-center justify-between mb-4 gap-4">
-        <h2 className="text-2xl font-bold">Participants</h2>
-        <div className="flex items-center gap-3">
-          <ViewToggle value={view} onChange={setView} />
-          <button className="rounded bg-teal-600 px-4 py-2 text-white" onClick={handleCreate}>Create participant</button>
-        </div>
-      </div>
+      <PageHeader
+        title="Participants"
+        description="Register and manage women enrolled in empowerment programs."
+      >
+        <input
+          type="search"
+          placeholder="Search by name…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className={`${inputClassName()} min-w-[200px]`}
+        />
+        <ViewToggle value={view} onChange={setView} />
+        {writable && <Button onClick={handleCreate}>Add participant</Button>}
+      </PageHeader>
 
-      <div className="h-[70vh]">
+      <div className="page-body">
         {list.length === 0 ? (
-          <div className="text-sm text-slate-500">No participants yet.</div>
-        ) : (
-          <>
-            {/* Desktop table or forced table */}
-            {(view === 'table') ? (
-              <div className="overflow-x-auto">
-                <table className="w-full table-auto border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 text-left">
-                      <th className="p-3 border">Name</th>
-                      <th className="p-3 border">Age</th>
-                      <th className="p-3 border">Education</th>
-                      <th className="p-3 border">Occupation</th>
-                      <th className="p-3 border">Phone</th>
-                      <th className="p-3 border">Village</th>
-                      <th className="p-3 border">Cell</th>
-                      <th className="p-3 border">Sector</th>
-                      <th className="p-3 border">District</th>
-                      <th className="p-3 border">Province</th>
-                      <th className="p-3 border">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.map((p) => (
-                      <tr key={p.id} className="odd:bg-white even:bg-slate-50">
-                        <td className="p-3 border align-middle">{p.full_name}</td>
-                        <td className="p-3 border align-middle">{p.age ?? ''}</td>
-                        <td className="p-3 border align-middle">{p.education_level}</td>
-                        <td className="p-3 border align-middle">{p.occupation}</td>
-                        <td className="p-3 border align-middle">{p.phone_number}</td>
-                        <td className="p-3 border align-middle">{p.village || ''}</td>
-                        <td className="p-3 border align-middle">{p.cell || ''}</td>
-                        <td className="p-3 border align-middle">{p.sector || ''}</td>
-                        <td className="p-3 border align-middle">{p.district || ''}</td>
-                        <td className="p-3 border align-middle">{p.province || ''}</td>
+          <EmptyState
+            title="No participants yet"
+            description="Start by registering your first program participant."
+            action={writable ? <Button onClick={handleCreate}>Add participant</Button> : null}
+          />
+        ) : view === 'table' ? (
+          <div className="surface-card flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="flex-1 overflow-auto">
+              <table className="w-full table-auto border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-left">
+                    <th className="p-3 border">Name</th>
+                    <th className="p-3 border">Age</th>
+                    <th className="p-3 border">Education</th>
+                    <th className="p-3 border">Occupation</th>
+                    <th className="p-3 border">Phone</th>
+                    <th className="p-3 border">Village</th>
+                    <th className="p-3 border">Cell</th>
+                    <th className="p-3 border">Sector</th>
+                    <th className="p-3 border">District</th>
+                    <th className="p-3 border">Province</th>
+                    {(writable || canViewProfile) && <th className="p-3 border">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((p) => (
+                    <tr key={p.id} className="odd:bg-white even:bg-slate-50">
+                      <td className="p-3 border align-middle">{p.full_name}</td>
+                      <td className="p-3 border align-middle">{p.age ?? ''}</td>
+                      <td className="p-3 border align-middle">{p.education_level}</td>
+                      <td className="p-3 border align-middle">{p.occupation}</td>
+                      <td className="p-3 border align-middle">{p.phone_number}</td>
+                      <td className="p-3 border align-middle">{p.village || ''}</td>
+                      <td className="p-3 border align-middle">{p.cell || ''}</td>
+                      <td className="p-3 border align-middle">{p.sector || ''}</td>
+                      <td className="p-3 border align-middle">{p.district || ''}</td>
+                      <td className="p-3 border align-middle">{p.province || ''}</td>
+                      {(writable || canViewProfile) && (
                         <td className="p-3 border align-middle">
-                          <div className="flex gap-2">
-                            <button className="rounded border px-3 py-1" onClick={() => handleEdit(p)}>Edit</button>
-                            <button className="rounded bg-rose-100 px-3 py-1 text-rose-700" onClick={async () => { await deleteParticipant(p.id); await refresh(); }}>Delete</button>
-                          </div>
+                          <RowActions
+                            writable={writable}
+                            onView={canViewProfile ? () => navigate(`/monitoring/${p.id}`) : undefined}
+                            onEdit={() => handleEdit(p)}
+                            onDelete={async () => { await deleteParticipant(p.id); await refresh(); }}
+                          />
                         </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className={`${view === 'cards' ? '' : 'md:block'} md:block hidden overflow-x-auto`}>
-                {/* when auto, show desktop table on md+ */}
-                <div className="hidden md:block">
-                  <table className="w-full table-auto border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 text-left">
-                        <th className="p-3 border">Name</th>
-                        <th className="p-3 border">Age</th>
-                        <th className="p-3 border">Education</th>
-                        <th className="p-3 border">Occupation</th>
-                        <th className="p-3 border">Phone</th>
-                        <th className="p-3 border">Village</th>
-                        <th className="p-3 border">Cell</th>
-                        <th className="p-3 border">Sector</th>
-                        <th className="p-3 border">District</th>
-                        <th className="p-3 border">Province</th>
-                        <th className="p-3 border">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {list.map((p) => (
-                        <tr key={p.id} className="odd:bg-white even:bg-slate-50">
-                          <td className="p-3 border align-middle">{p.full_name}</td>
-                          <td className="p-3 border align-middle">{p.age ?? ''}</td>
-                          <td className="p-3 border align-middle">{p.education_level}</td>
-                          <td className="p-3 border align-middle">{p.occupation}</td>
-                          <td className="p-3 border align-middle">{p.phone_number}</td>
-                          <td className="p-3 border align-middle">{p.village || ''}</td>
-                          <td className="p-3 border align-middle">{p.cell || ''}</td>
-                          <td className="p-3 border align-middle">{p.sector || ''}</td>
-                          <td className="p-3 border align-middle">{p.district || ''}</td>
-                          <td className="p-3 border align-middle">{p.province || ''}</td>
-                          <td className="p-3 border align-middle">
-                            <div className="flex gap-2">
-                              <button className="rounded border px-3 py-1" onClick={() => handleEdit(p)}>Edit</button>
-                              <button className="rounded bg-rose-100 px-3 py-1 text-rose-700" onClick={async () => { await deleteParticipant(p.id); await refresh(); }}>Delete</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {/* Mobile cards */}
-                {(view === 'cards' || view === 'auto') && (
-                  <div className={`md:hidden space-y-3 overflow-auto p-2 ${view === 'cards' ? '' : ''}`}>
-                    {list.map((p) => (
-                      <div key={p.id} className="bg-white rounded-lg shadow-sm p-4 border">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="text-sm text-slate-500">Name</div>
-                            <div className="font-semibold">{p.full_name}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm text-slate-500">Phone</div>
-                            <div className="font-medium">{p.phone_number}</div>
-                          </div>
-                        </div>
-                        <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-600">
-                          <div>
-                            <div className="text-xs text-slate-500">Age</div>
-                            <div>{p.age ?? ''}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-slate-500">Education</div>
-                            <div>{p.education_level}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-slate-500">Village</div>
-                            <div>{p.village || ''}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-slate-500">Province</div>
-                            <div>{p.province || ''}</div>
-                          </div>
-                        </div>
-                        <div className="mt-3 flex gap-2">
-                          <button className="rounded border px-3 py-1" onClick={() => handleEdit(p)}>Edit</button>
-                          <button className="rounded bg-rose-100 px-3 py-1 text-rose-700" onClick={async () => { await deleteParticipant(p.id); await refresh(); }}>Delete</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="grid flex-1 grid-cols-1 gap-4 overflow-auto sm:grid-cols-2 lg:grid-cols-4 content-start">
+            {list.map((p) => (
+              <ParticipantCard
+                key={p.id}
+                p={p}
+                writable={writable}
+                canViewProfile={canViewProfile}
+                onView={() => navigate(`/monitoring/${p.id}`)}
+                onEdit={() => handleEdit(p)}
+                onDelete={async () => { await deleteParticipant(p.id); await refresh(); }}
+              />
+            ))}
+          </div>
         )}
       </div>
 
       <Modal title={editingId ? 'Edit participant' : 'Create participant'} open={open} onClose={() => setOpen(false)}>
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
-          <input required placeholder="Full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="rounded border p-2" />
-          <input required type="number" min="0" placeholder="Age" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className="rounded border p-2" />
-          <input type="date" placeholder="Date of birth (optional)" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className="rounded border p-2" />
-          <input placeholder="Village" value={form.village} onChange={(e) => setForm({ ...form, village: e.target.value })} className="rounded border p-2" />
-          <input placeholder="Cell" value={form.cell} onChange={(e) => setForm({ ...form, cell: e.target.value })} className="rounded border p-2" />
-          <input placeholder="Sector" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} className="rounded border p-2" />
-          <input placeholder="District" value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} className="rounded border p-2" />
-          <input placeholder="Province" value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })} className="rounded border p-2" />
-          <input placeholder="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="rounded border p-2" />
-          <input placeholder="Phone" value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} className="rounded border p-2" />
-          <select required value={form.education_level} onChange={(e) => setForm({ ...form, education_level: e.target.value })} className="rounded border p-2">
+          <input required placeholder="Full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className={inputClassName()} />
+          <input required type="number" min="0" placeholder="Age" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className={inputClassName()} />
+          <input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className={inputClassName()} />
+          <input placeholder="Village" value={form.village} onChange={(e) => setForm({ ...form, village: e.target.value })} className={inputClassName()} />
+          <input placeholder="Cell" value={form.cell} onChange={(e) => setForm({ ...form, cell: e.target.value })} className={inputClassName()} />
+          <input placeholder="Sector" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} className={inputClassName()} />
+          <input placeholder="District" value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} className={inputClassName()} />
+          <input placeholder="Province" value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })} className={inputClassName()} />
+          <input placeholder="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className={inputClassName()} />
+          <input placeholder="Phone" value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} className={inputClassName()} />
+          <select required value={form.education_level} onChange={(e) => setForm({ ...form, education_level: e.target.value })} className={inputClassName()}>
             <option value="">Select education level</option>
             <option>No formal education</option>
             <option>Primary</option>
@@ -223,10 +230,10 @@ export default function Participants() {
             <option>TVET / Vocational</option>
             <option>University</option>
           </select>
-          <input placeholder="Occupation" value={form.occupation} onChange={(e) => setForm({ ...form, occupation: e.target.value })} className="rounded border p-2" />
-          <div className="sm:col-span-2 flex justify-end gap-2 mt-2">
-            <button className="rounded border px-4 py-2" type="button" onClick={() => { setForm(empty); setEditingId(null); setOpen(false); }}>Cancel</button>
-            <button className="rounded bg-teal-600 px-4 py-2 text-white" type="submit">{editingId ? 'Update' : 'Create'}</button>
+          <input placeholder="Occupation" value={form.occupation} onChange={(e) => setForm({ ...form, occupation: e.target.value })} className={inputClassName()} />
+          <div className="sm:col-span-2 mt-2 flex justify-end gap-2">
+            <Button variant="secondary" type="button" onClick={() => { setForm(empty); setEditingId(null); setOpen(false); }}>Cancel</Button>
+            <Button type="submit">{editingId ? 'Update' : 'Create'}</Button>
           </div>
         </form>
       </Modal>

@@ -65,11 +65,16 @@
   html {
     font-family: var(--font-family);
     font-size: var(--base-font-size);
+    @apply h-full;
   }
   
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply h-full bg-slate-50 text-slate-900 antialiased;
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  #root {
+    @apply h-full;
   }
   
   /* Light theme (default) */
@@ -519,6 +524,52 @@
   
   .text-muted {
     @apply text-gray-600;
+  }
+
+  /* === APP SHELL === */
+  .app-main {
+    @apply min-h-0 flex-1 overflow-y-auto custom-scrollbar;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  }
+
+  .page-shell {
+    @apply mx-auto flex w-full min-h-full flex-col px-4 py-6 sm:px-6 lg:px-8;
+  }
+
+  .page-body {
+    @apply flex flex-col gap-6;
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-sm;
+  }
+
+  .data-table {
+    @apply w-full text-sm;
+  }
+
+  .data-table thead tr {
+    @apply border-b border-slate-200 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  .data-table th {
+    @apply px-4 py-3;
+  }
+
+  .data-table td {
+    @apply border-b border-slate-100 px-4 py-3 align-middle text-slate-700;
+  }
+
+  .data-table tbody tr {
+    @apply transition-colors hover:bg-primary-50/30;
+  }
+
+  .nav-pill-active {
+    @apply bg-primary-50 text-primary-800 ring-1 ring-primary-100;
+  }
+
+  .nav-pill-inactive {
+    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
   }
 }
 

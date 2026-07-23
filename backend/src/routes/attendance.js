@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
 async function getAttendanceTimestampColumn() {
@@ -17,7 +17,22 @@ async function getAttendanceTimestampColumn() {
   return result.rows[0]?.column_name || 'id';
 }
 
-router.post('/', authenticate,
+router.use(authenticate);
+router.use((req, res, next) => {
+  const action = ['GET', 'HEAD'].includes(req.method) ? 'read' : 'write';
+  return requirePermission('attendance', action)(req, res, next);
+});
+
+async function ensureEnrollment(trainingId, participantId) {
+  await db.query(
+    `INSERT INTO training_enrollments (training_id, participant_id)
+     VALUES ($1, $2)
+     ON CONFLICT (training_id, participant_id) DO NOTHING`,
+    [trainingId, participantId]
+  );
+}
+
+router.post('/',
   body('participant_id').isInt(),
   body('training_id').isInt(),
   body('status').notEmpty(),
@@ -26,6 +41,16 @@ router.post('/', authenticate,
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     const { participant_id, training_id, status } = req.body;
     try {
+      const enrolled = await db.query(
+        'SELECT 1 FROM training_enrollments WHERE training_id=$1 AND participant_id=$2',
+        [training_id, participant_id]
+      );
+      if (!enrolled.rows[0]) {
+        return res.status(400).json({
+          error: 'Participant is not enrolled in this training. Enroll them first.',
+        });
+      }
+
       const result = await db.query(
         'INSERT INTO attendance (participant_id, training_id, status) VALUES ($1,$2,$3) RETURNING *',
         [participant_id, training_id, status]
@@ -55,10 +80,123 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.put('/:id', async (req, res) => {
+  const { status } = req.body;
+  if (!status) return res.status(400).json({ error: 'status is required' });
+  try {
+    const result = await db.query(
+      'UPDATE attendance SET status=$1 WHERE id=$2 RETURNING *',
+      [status, req.params.id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const result = await db.query('DELETE FROM attendance WHERE id=$1 RETURNING id', [req.params.id]);
+    if (!result.rows[0]) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.get('/training/:trainingId', async (req, res) => {
   try {
-    const result = await db.query('SELECT a.*, p.full_name FROM attendance a JOIN participants p ON p.id=a.participant_id WHERE a.training_id=$1', [req.params.trainingId]);
+    const result = await db.query(
+      `SELECT a.*, p.full_name as participant_name
+       FROM attendance a
+       JOIN participants p ON p.id=a.participant_id
+       WHERE a.training_id=$1
+       ORDER BY a.id DESC`,
+      [req.params.trainingId]
+    );
     res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/training/:trainingId/participants', async (req, res) => {
+  const trainingId = Number(req.params.trainingId);
+  if (!Number.isInteger(trainingId)) {
+    return res.status(400).json({ error: 'Invalid training id' });
+  }
+  try {
+    const result = await db.query(
+      `SELECT p.*, e.enrolled_at
+       FROM training_enrollments e
+       JOIN participants p ON p.id = e.participant_id
+       WHERE e.training_id = $1
+       ORDER BY p.full_name ASC`,
+      [trainingId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/training/:trainingId/participants',
+  body('participant_ids').isArray({ min: 1 }),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const trainingId = Number(req.params.trainingId);
+    const participantIds = (req.body.participant_ids || [])
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id));
+
+    if (!Number.isInteger(trainingId) || participantIds.length === 0) {
+      return res.status(400).json({ error: 'training id and participant_ids are required' });
+    }
+
+    try {
+      const training = await db.query('SELECT id FROM trainings WHERE id=$1', [trainingId]);
+      if (!training.rows[0]) return res.status(404).json({ error: 'Training not found' });
+
+      for (const participantId of participantIds) {
+        await ensureEnrollment(trainingId, participantId);
+      }
+
+      const result = await db.query(
+        `SELECT p.*, e.enrolled_at
+         FROM training_enrollments e
+         JOIN participants p ON p.id = e.participant_id
+         WHERE e.training_id = $1
+         ORDER BY p.full_name ASC`,
+        [trainingId]
+      );
+      res.json(result.rows);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Server error' });
+    }
+  }
+);
+
+router.delete('/training/:trainingId/participants/:participantId', async (req, res) => {
+  const trainingId = Number(req.params.trainingId);
+  const participantId = Number(req.params.participantId);
+  if (!Number.isInteger(trainingId) || !Number.isInteger(participantId)) {
+    return res.status(400).json({ error: 'Invalid id' });
+  }
+  try {
+    const result = await db.query(
+      'DELETE FROM training_enrollments WHERE training_id=$1 AND participant_id=$2 RETURNING id',
+      [trainingId, participantId]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Enrollment not found' });
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

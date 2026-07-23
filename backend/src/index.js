@@ -10,7 +10,11 @@ const trainingsRoutes = require('./routes/trainings');
 const trainersRoutes = require('./routes/trainers');
 const attendanceRoutes = require('./routes/attendance');
 const evaluationsRoutes = require('./routes/evaluations');
+const monitoringRoutes = require('./routes/monitoring');
+const reportsRoutes = require('./routes/reports');
 const db = require('./db');
+const { loadDashboardAnalytics } = require('./lib/analytics');
+const { authenticate, requirePermission } = require('./middleware/auth');
 
 app.use(cors());
 app.use(express.json());
@@ -21,8 +25,10 @@ app.use('/api/trainings', trainingsRoutes);
 app.use('/api/trainers', trainersRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/evaluations', evaluationsRoutes);
+app.use('/api/monitoring', monitoringRoutes);
+app.use('/api/reports', reportsRoutes);
 
-app.get('/api/summary', async (req, res, next) => {
+app.get('/api/summary', authenticate, requirePermission('dashboard', 'read'), async (req, res, next) => {
   try {
     const countsResult = await db.query(`
       SELECT
@@ -85,10 +91,35 @@ app.get('/api/summary', async (req, res, next) => {
       ORDER BY ms.month_start
     `);
 
+    const recentResult = await db.query(`
+      SELECT title, action, meta, created_at FROM (
+        SELECT full_name AS title, 'Participant registered' AS action, COALESCE(village, '') AS meta, created_at
+        FROM participants
+        UNION ALL
+        SELECT title, 'Training created' AS action, COALESCE(location, '') AS meta, created_at
+        FROM trainings
+        UNION ALL
+        SELECT p.full_name || ' — ' || t.title AS title, 'Attendance recorded' AS action, a.status AS meta, a.created_at
+        FROM attendance a
+        JOIN participants p ON p.id = a.participant_id
+        JOIN trainings t ON t.id = a.training_id
+        UNION ALL
+        SELECT p.full_name AS title, 'Evaluation recorded' AS action, COALESCE(e.progress, '') AS meta, e.created_at
+        FROM evaluations e
+        JOIN participants p ON p.id = e.participant_id
+      ) AS activity
+      ORDER BY created_at DESC
+      LIMIT 8
+    `);
+
+    const analytics = await loadDashboardAnalytics(db);
+
     res.json({
       ...(countsResult.rows[0] || { participants: 0, trainings: 0, attendance: 0, evaluations: 0 }),
       nextTraining: nextTrainingResult.rows[0]?.nextTraining || null,
       trends: trendsResult.rows || [],
+      recent: recentResult.rows || [],
+      ...analytics,
     });
   } catch (err) {
     next(err);

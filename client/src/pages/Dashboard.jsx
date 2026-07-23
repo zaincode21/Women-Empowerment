@@ -1,29 +1,47 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getSummary } from '../lib/api';
+import { canWrite } from '../lib/auth';
 import Sparkline from '../components/Sparkline';
+import { ProgramAnalytics } from '../components/ProgramAnalytics';
+import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+
+function computeDelta(trends, key) {
+  if (!trends || trends.length < 2) return null;
+  const prev = trends[trends.length - 2][key] ?? 0;
+  const curr = trends[trends.length - 1][key] ?? 0;
+  if (prev === 0) return curr > 0 ? 100 : 0;
+  return Math.round(((curr - prev) / prev) * 100);
+}
 
 function StatCard({ label, value, delta, data }) {
   return (
-    <div className="rounded-2xl border bg-white p-4 shadow flex flex-col justify-between">
+    <div className="surface-card flex flex-col justify-between p-5">
       <div>
         <div className="text-xs text-slate-500">{label}</div>
         <div className="mt-2 text-2xl font-bold text-slate-900">{value}</div>
       </div>
       <div className="mt-3 flex items-center justify-between">
-        <div className="text-sm text-slate-500">{delta ? `${delta > 0 ? '+' : ''}${delta}%` : ''}</div>
+        <div className="text-sm text-slate-500">
+          {delta !== null && delta !== undefined ? `${delta > 0 ? '+' : ''}${delta}% vs last month` : ''}
+        </div>
         <Sparkline data={data} width={120} height={28} />
       </div>
     </div>
   );
 }
 
-function RecentItem({ title, meta }) {
+function RecentItem({ title, meta, created_at }) {
+  const when = created_at
+    ? new Date(created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : meta;
   return (
     <div className="flex items-start gap-3 py-2">
-      <div className="h-9 w-9 flex-none rounded-full bg-slate-100" />
+      <div className="h-9 w-9 flex-none rounded-full bg-primary-50 ring-1 ring-primary-100" />
       <div>
         <div className="text-sm font-medium">{title}</div>
-        <div className="text-xs text-slate-500">{meta}</div>
+        <div className="text-xs text-slate-500">{when}</div>
       </div>
     </div>
   );
@@ -31,6 +49,7 @@ function RecentItem({ title, meta }) {
 
 export default function Dashboard() {
   const [summary, setSummary] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     getSummary().then(setSummary).catch(() => {});
@@ -39,55 +58,49 @@ export default function Dashboard() {
   const participants = summary?.participants ?? 0;
   const trainings = summary?.trainings ?? 0;
   const attendance = summary?.attendance ?? 0;
-  const evaluations = summary?.evaluations ?? 0;
   const trends = summary?.trends || [];
 
-  // fallback demo series when API doesn't provide time series
-  const demoSeries = [participants - 2, participants - 1, participants, participants + 1, participants + 2].map((n) => Math.max(0, n));
+  const participantDelta = computeDelta(trends, 'participants');
+  const trainingDelta = computeDelta(trends, 'trainings');
+  const attendanceDelta = computeDelta(trends, 'attendance');
+
+  const participantSeries = trends.length ? trends.map((row) => row.participants) : [participants];
+  const trainingSeries = trends.length ? trends.map((row) => row.trainings) : [trainings];
+  const attendanceSeries = trends.length ? trends.map((row) => row.attendance) : [attendance];
 
   return (
-    <div className="min-h-screen mx-auto max-w-7xl p-6 flex flex-col">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-extrabold">Dashboard</h2>
-        <div className="text-sm text-slate-600">Overview & insights</div>
-      </div>
+    <div className="page-shell">
+      <PageHeader
+        title="Dashboard"
+        description="Overview of program activity, attendance performance, and recent updates."
+      />
 
-      <div className="flex-1 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="page-body">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard label="Participants" value={participants} delta={2} data={trends.length ? trends.map((row) => row.participants) : demoSeries} />
-            <StatCard label="Trainings" value={trainings} delta={-1} data={trends.length ? trends.map((row) => row.trainings) : [1,2,3,2,trainings]} />
-            <StatCard label="Attendance" value={attendance} delta={5} data={trends.length ? trends.map((row) => row.attendance) : [attendance - 3, attendance - 1, attendance, attendance + 2, attendance + 5]} />
+            <StatCard label="Participants" value={participants} delta={participantDelta} data={participantSeries} />
+            <StatCard label="Trainings" value={trainings} delta={trainingDelta} data={trainingSeries} />
+            <StatCard label="Attendance" value={attendance} delta={attendanceDelta} data={attendanceSeries} />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border bg-white p-4 shadow">
-              <div className="text-xs text-slate-500">Evaluations</div>
-              <div className="mt-2 text-2xl font-bold text-slate-900">{evaluations}</div>
-              <div className="mt-3 text-sm text-slate-500">Recorded progress reviews and follow-ups.</div>
-            </div>
-            <div className="rounded-lg border bg-white p-4 shadow">
-              <div className="text-xs text-slate-500">Report readiness</div>
-              <div className="mt-2 text-2xl font-bold text-slate-900">Ready</div>
-              <div className="mt-3 text-sm text-slate-500">Trend data and exports are available in Reports.</div>
-            </div>
-          </div>
+          <ProgramAnalytics summary={summary} />
 
-          <div className="rounded-lg border bg-white p-4 shadow">
-            <h3 className="font-semibold mb-2">Upcoming training</h3>
+          <div className="surface-card p-5">
+            <h3 className="mb-2 font-semibold text-slate-900">Upcoming training</h3>
             <div className="text-sm text-slate-700">{summary?.nextTraining ? summary.nextTraining.title : 'No upcoming training'}</div>
             {summary?.nextTraining && (
               <div className="mt-3 text-sm text-slate-500">
-                {summary.nextTraining.date || ''} • {summary.nextTraining.location || ''}
+                {summary.nextTraining.date ? new Date(summary.nextTraining.date).toLocaleDateString() : ''} • {summary.nextTraining.location || ''}
               </div>
             )}
           </div>
 
-          <div className="rounded-lg border bg-white p-4 shadow">
-            <h3 className="font-semibold mb-2">Recent activity</h3>
+          <div className="surface-card p-5">
+            <h3 className="mb-3 font-semibold text-slate-900">Recent activity</h3>
             <div>
-              {(summary?.recent || []).slice(0,5).map((r, idx) => (
-                <RecentItem key={idx} title={r.title || r.action || 'Event'} meta={r.meta || r.created_at || ''} />
+              {(summary?.recent || []).slice(0, 5).map((r, idx) => (
+                <RecentItem key={idx} title={r.title || r.action || 'Event'} meta={r.meta} created_at={r.created_at} />
               ))}
               {(!summary?.recent || summary.recent.length === 0) && (
                 <div className="text-sm text-slate-500">No recent activity</div>
@@ -96,23 +109,30 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <aside className="space-y-6">
-          <div className="rounded-lg border bg-white p-4 shadow">
-            <h4 className="font-semibold mb-2">Quick actions</h4>
+        <aside className="space-y-4">
+          <div className="surface-card p-5">
+            <h4 className="mb-3 font-semibold text-slate-900">Quick actions</h4>
             <div className="flex flex-col gap-2">
-              <button className="rounded bg-teal-600 px-3 py-2 text-white text-sm">Create training</button>
-              <button className="rounded border px-3 py-2 text-sm">Add participant</button>
-              <button className="rounded border px-3 py-2 text-sm">Record attendance</button>
+              {canWrite('trainings') && (
+                <Button className="w-full" onClick={() => navigate('/trainings')}>Create training</Button>
+              )}
+              {canWrite('participants') && (
+                <Button variant="secondary" className="w-full" onClick={() => navigate('/participants')}>Add participant</Button>
+              )}
+              {canWrite('attendance') && (
+                <Button variant="secondary" className="w-full" onClick={() => navigate('/attendance')}>Record attendance</Button>
+              )}
             </div>
           </div>
 
-          <div className="rounded-lg border bg-white p-4 shadow">
-            <h4 className="font-semibold mb-2">Summary</h4>
-            <div className="text-sm text-slate-600">Participants: {participants}</div>
-            <div className="text-sm text-slate-600">Trainings: {trainings}</div>
-            <div className="text-sm text-slate-600">Attendance: {attendance}</div>
+          <div className="surface-card p-5">
+            <h4 className="mb-3 font-semibold text-slate-900">At a glance</h4>
+            <div className="text-sm text-slate-600">Completion rate: {summary?.programCompletionRate ?? 0}%</div>
+            <div className="text-sm text-slate-600">Evaluations: {summary?.evaluations ?? 0}</div>
+            <div className="text-sm text-slate-600">Tracked pairs: {summary?.trackedPairs ?? 0}</div>
           </div>
         </aside>
+      </div>
       </div>
     </div>
   );

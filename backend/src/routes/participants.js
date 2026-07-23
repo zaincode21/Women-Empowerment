@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
 function calculateAge(dateOfBirth) {
@@ -15,7 +15,13 @@ function calculateAge(dateOfBirth) {
   return Math.max(0, age);
 }
 
-router.post('/', authenticate,
+router.use(authenticate);
+router.use((req, res, next) => {
+  const action = ['GET', 'HEAD'].includes(req.method) ? 'read' : 'write';
+  return requirePermission('participants', action)(req, res, next);
+});
+
+router.post('/',
   body('full_name').notEmpty(),
   body('age').optional({ nullable: true }).isInt({ min: 0 }),
   body('date_of_birth').optional({ nullable: true }).isISO8601(),
@@ -65,7 +71,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', async (req, res) => {
   const { full_name, village, cell, sector, district, province, address, phone_number, education_level, occupation } = req.body;
   const age = req.body.age !== undefined && req.body.age !== '' ? Number(req.body.age) : calculateAge(req.body.date_of_birth);
   const dateOfBirth = req.body.date_of_birth || null;
@@ -83,7 +89,7 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM participants WHERE id=$1', [req.params.id]);
     res.json({ success: true });

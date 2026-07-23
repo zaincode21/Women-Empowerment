@@ -6,6 +6,8 @@ async function fix() {
   try {
     console.log('Ensuring trainers table has expected columns...');
     const alters = [
+      `ALTER TABLE trainers ADD COLUMN IF NOT EXISTS full_name VARCHAR(255);`,
+      `ALTER TABLE trainers ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);`,
       `ALTER TABLE trainers ADD COLUMN IF NOT EXISTS name VARCHAR(255);`,
       `ALTER TABLE trainers ADD COLUMN IF NOT EXISTS phone VARCHAR(50);`,
       `ALTER TABLE trainers ADD COLUMN IF NOT EXISTS email VARCHAR(255);`,
@@ -22,12 +24,23 @@ async function fix() {
       await pool.query(sql);
     }
 
-    // If there's a full_name column, copy it to name
-    const colRes = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_name='trainers' AND column_name='full_name'");
-    if (colRes.rows.length > 0) {
-      await pool.query('UPDATE trainers SET name = full_name WHERE name IS NULL AND full_name IS NOT NULL');
-      console.log('Copied full_name to name for existing rows');
+    // Sync legacy name/phone columns with full_name/phone_number
+    await pool.query('UPDATE trainers SET full_name = name WHERE full_name IS NULL AND name IS NOT NULL');
+    await pool.query('UPDATE trainers SET name = full_name WHERE name IS NULL AND full_name IS NOT NULL');
+    await pool.query('UPDATE trainers SET phone_number = phone WHERE phone_number IS NULL AND phone IS NOT NULL');
+    await pool.query('UPDATE trainers SET phone = phone_number WHERE phone IS NULL AND phone_number IS NOT NULL');
+    console.log('Synced trainer name/phone columns');
+
+    console.log('Ensuring trainings table has expected columns...');
+    const trainingAlters = [
+      `ALTER TABLE trainings ADD COLUMN IF NOT EXISTS trainer_name VARCHAR(255);`,
+      `ALTER TABLE trainings ADD COLUMN IF NOT EXISTS date DATE;`,
+      `ALTER TABLE trainings ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();`,
+    ];
+    for (const sql of trainingAlters) {
+      await pool.query(sql);
     }
+    await pool.query('UPDATE trainings SET date = start_date::date WHERE date IS NULL AND start_date IS NOT NULL');
 
     console.log('Ensuring participants table has expected columns...');
     const participantAlters = [
@@ -60,6 +73,24 @@ async function fix() {
       await pool.query(sql);
     }
 
+    console.log('Ensuring training_enrollments table exists...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS training_enrollments (
+        id SERIAL PRIMARY KEY,
+        training_id INT NOT NULL REFERENCES trainings(id) ON DELETE CASCADE,
+        participant_id INT NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+        enrolled_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (training_id, participant_id)
+      )
+    `);
+    await pool.query(`
+      INSERT INTO training_enrollments (training_id, participant_id)
+      SELECT DISTINCT training_id, participant_id
+      FROM attendance
+      ON CONFLICT (training_id, participant_id) DO NOTHING
+    `);
+    console.log('Backfilled enrollments from existing attendance records');
+
     console.log('Ensuring attendance table has an expected timestamp column...');
     await pool.query('ALTER TABLE attendance ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();');
 
@@ -73,6 +104,12 @@ async function fix() {
       await pool.query('UPDATE attendance SET created_at = recorded_at WHERE created_at IS NULL AND recorded_at IS NOT NULL');
       console.log('Copied recorded_at values into created_at for existing attendance rows');
     }
+
+    await pool.query("UPDATE users SET role = LOWER(TRIM(role)) WHERE role IS NOT NULL");
+    console.log('Normalized user roles to lowercase');
+
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();');
+    console.log('Ensured users.created_at column exists');
 
     console.log('Schema fix complete');
   } catch (err) {

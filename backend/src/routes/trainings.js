@@ -1,10 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
-router.post('/', authenticate, body('title').notEmpty(), async (req, res) => {
+router.use(authenticate);
+router.use((req, res, next) => {
+  const action = ['GET', 'HEAD'].includes(req.method) ? 'read' : 'write';
+  return requirePermission('trainings', action)(req, res, next);
+});
+
+router.post('/', body('title').notEmpty(), async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   let { title, trainer_id, start_date, end_date, village, cell, sector, district, province, location, description } = req.body;
@@ -56,7 +62,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', async (req, res) => {
   let { title, trainer_id, start_date, end_date, village, cell, sector, district, province, location, description } = req.body;
   try {
     let trainer_name = req.body.trainer_name || '';
@@ -81,7 +87,7 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM trainings WHERE id=$1', [req.params.id]);
     res.json({ success: true });
