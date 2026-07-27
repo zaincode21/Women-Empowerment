@@ -1,4 +1,4 @@
-const ROLES = ['administrator', 'project_manager', 'trainer', 'staff'];
+const ROLES = ['administrator', 'project_manager', 'trainer', 'staff', 'participant'];
 
 const PERMISSIONS = {
   dashboard: {
@@ -40,6 +40,10 @@ const PERMISSIONS = {
   certificates: {
     read: ['administrator', 'staff'],
     write: ['administrator', 'staff'],
+  },
+  portal: {
+    read: ['participant'],
+    write: ['participant'],
   },
 };
 

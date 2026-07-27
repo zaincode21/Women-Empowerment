@@ -3,7 +3,8 @@ import { canAccess } from '../lib/permissions';
 
 export default function RequireRole({ module, children }) {
   if (!canAccess(module, 'read')) {
-    return <Navigate to="/" replace />;
+    const fallback = canAccess('portal', 'read') ? '/portal' : '/';
+    return <Navigate to={fallback} replace />;
   }
   return children;
 }

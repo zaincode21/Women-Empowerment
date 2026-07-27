@@ -1,6 +1,8 @@
+import { getToken, getUserRaw, clearAuth } from './authStorage';
+
 export function getUser() {
   try {
-    return JSON.parse(localStorage.getItem('we_user') || 'null');
+    return JSON.parse(getUserRaw() || 'null');
   } catch {
     return null;
   }
@@ -11,8 +13,6 @@ export function isAdmin() {
   return typeof role === 'string' && role.trim().toLowerCase() === 'administrator';
 }
 
-export function getToken() {
-  return localStorage.getItem('we_token');
-}
+export { getToken, clearAuth };
 
 export { ROLES, canAccess, canWrite, hasRole } from './permissions';

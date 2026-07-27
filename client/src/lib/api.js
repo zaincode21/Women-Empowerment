@@ -1,3 +1,5 @@
+import { getToken } from './authStorage';
+
 const jsonHeaders = {
   'Content-Type': 'application/json',
 };
@@ -8,10 +10,10 @@ async function request(path, options = {}) {
   const headers = { ...jsonHeaders };
 
   try {
-    const token = localStorage.getItem('we_token');
+    const token = getToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
   } catch (e) {
-    // ignore (SSR or no localStorage)
+    // ignore (SSR or no sessionStorage)
   }
 
   const response = await fetch(url, {
@@ -103,9 +105,98 @@ export function deleteTrainer(id) {
   });
 }
 
-export function getParticipants(q) {
-  const query = q ? `?q=${encodeURIComponent(q)}` : '';
-  return request(`/api/participants${query}`);
+export function getParticipants(q, status) {
+  const search = new URLSearchParams();
+  if (q) search.set('q', q);
+  if (status) search.set('status', status);
+  const query = search.toString();
+  return request(`/api/participants${query ? `?${query}` : ''}`);
+}
+
+export function updateParticipantStatus(id, status) {
+  return request(`/api/participants/${id}/status`, {
+    method: 'PUT',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function getMyPortal() {
+  return request('/api/me/portal');
+}
+
+export function forgotPassword(email) {
+  const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || '';
+  return fetch(`${API_BASE}/api/auth/forgot-password`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ email }),
+  }).then(async (response) => {
+    if (!response.ok) {
+      const message = await response.text().catch(() => '');
+      try {
+        const parsed = JSON.parse(message);
+        throw new Error(parsed.error || message || 'Request failed');
+      } catch (e) {
+        if (e instanceof Error && e.message && !e.message.startsWith('{')) throw e;
+        throw new Error(message || 'Request failed');
+      }
+    }
+    return response.json();
+  });
+}
+
+export function resetPassword(token, password) {
+  const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || '';
+  return fetch(`${API_BASE}/api/auth/reset-password`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ token, password }),
+  }).then(async (response) => {
+    if (!response.ok) {
+      const message = await response.text().catch(() => '');
+      try {
+        const parsed = JSON.parse(message);
+        throw new Error(parsed.error || message || 'Request failed');
+      } catch (e) {
+        if (e instanceof Error && e.message && !e.message.startsWith('{')) throw e;
+        throw new Error(message || 'Request failed');
+      }
+    }
+    return response.json();
+  });
+}
+
+export function getParticipantTrainings(id) {
+  return request(`/api/participants/${id}/trainings`);
+}
+
+export function registerParticipant(payload) {
+  const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || '';
+  return fetch(`${API_BASE}/api/participants/register`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify(payload),
+  }).then(async (response) => {
+    if (!response.ok) {
+      const message = await response.text().catch(() => '');
+      try {
+        const parsed = JSON.parse(message);
+        throw new Error(parsed.error || message || `Request failed with status ${response.status}`);
+      } catch (e) {
+        if (e instanceof Error && e.message && !e.message.startsWith('{')) throw e;
+        throw new Error(message || `Request failed with status ${response.status}`);
+      }
+    }
+    return response.json();
+  });
+}
+
+export function getPublicTrainings() {
+  const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || '';
+  return fetch(`${API_BASE}/api/trainings/public`).then(async (response) => {
+    if (!response.ok) throw new Error('Failed to load trainings');
+    return response.json();
+  });
 }
 
 export function createParticipant(payload) {

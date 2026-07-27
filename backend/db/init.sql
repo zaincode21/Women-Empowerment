@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(100) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
   role VARCHAR(50) NOT NULL DEFAULT 'staff',
+  full_name VARCHAR(255),
+  email VARCHAR(255) UNIQUE,
+  phone_number VARCHAR(50),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -19,8 +22,11 @@ CREATE TABLE IF NOT EXISTS participants (
   province VARCHAR(255),
   address TEXT,
   phone_number VARCHAR(50),
+  email VARCHAR(255) UNIQUE,
   education_level VARCHAR(100),
   occupation VARCHAR(100),
+  password VARCHAR(255),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -83,5 +89,16 @@ CREATE TABLE IF NOT EXISTS evaluations (
   achievements TEXT,
   follow_up TEXT,
   next_review_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id SERIAL PRIMARY KEY,
+  account_type VARCHAR(20) NOT NULL,
+  account_id INT NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  token_hash VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );

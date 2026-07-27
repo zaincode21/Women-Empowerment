@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { isAuthenticated } from './lib/authStorage';
+import { getUser } from './lib/auth';
 import Sidebar from './components/Sidebar';
 import RequireRole from './components/RequireRole';
 import Dashboard from './pages/Dashboard';
@@ -14,11 +16,21 @@ import Reports from './pages/Reports';
 import CertificateGenerator from './pages/CertificateGenerator';
 import Users from './pages/Users';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import ParticipantRegister from './pages/ParticipantRegister';
+import ParticipantPortal from './pages/ParticipantPortal';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function RequireAuth({ children }) {
-  const user = JSON.parse(localStorage.getItem('we_user') || 'null');
-  if (!user) return <Navigate to="/login" replace />;
+  if (!isAuthenticated()) return <Navigate to="/login" replace />;
   return children;
+}
+
+function HomeRedirect() {
+  const user = getUser();
+  if (user?.role === 'participant') return <Navigate to="/portal" replace />;
+  return <RequireRole module="dashboard"><Dashboard /></RequireRole>;
 }
 
 export default function App() {
@@ -26,9 +38,14 @@ export default function App() {
     <BrowserRouter future={{ v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/participant-register" element={<ParticipantRegister />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
-          <Route index element={<RequireRole module="dashboard"><Dashboard /></RequireRole>} />
+          <Route index element={<HomeRedirect />} />
+          <Route path="portal" element={<RequireRole module="portal"><ParticipantPortal /></RequireRole>} />
           <Route path="participants" element={<RequireRole module="participants"><Participants /></RequireRole>} />
           <Route path="trainers" element={<RequireRole module="trainers"><Trainers /></RequireRole>} />
           <Route path="trainings" element={<RequireRole module="trainings"><Trainings /></RequireRole>} />

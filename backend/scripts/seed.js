@@ -44,15 +44,19 @@ async function seed() {
     const userExists = await pool.query('SELECT 1 FROM users WHERE username=$1', ['admin']);
     if (userExists.rows.length === 0) {
       await pool.query(
-        'INSERT INTO users (username, password, role) VALUES ($1,$2,$3)',
-        ['admin', hashed, 'administrator']
+        'INSERT INTO users (username, password, role, email, full_name) VALUES ($1,$2,$3,$4,$5)',
+        ['admin', hashed, 'administrator', 'admin@wep.rw', 'System Administrator']
+      );
+    } else {
+      await pool.query(
+        `UPDATE users SET email = COALESCE(NULLIF(TRIM(email), ''), 'admin@wep.rw') WHERE username='admin'`
       );
     }
 
     const demoUsers = [
-      { username: 'pm1', role: 'project_manager' },
-      { username: 'trainer1', role: 'trainer' },
-      { username: 'staff1', role: 'staff' },
+      { username: 'pm1', role: 'project_manager', email: 'pm1@wep.rw', full_name: 'Project Manager' },
+      { username: 'trainer1', role: 'trainer', email: 'trainer1@wep.rw', full_name: 'Demo Trainer' },
+      { username: 'staff1', role: 'staff', email: 'staff1@wep.rw', full_name: 'Demo Staff' },
     ];
     const demoPass = process.env.SEED_DEMO_PASS || 'demo123';
     const demoHashed = await bcrypt.hash(demoPass, 10);
@@ -61,8 +65,13 @@ async function seed() {
       const exists = await pool.query('SELECT 1 FROM users WHERE username=$1', [u.username]);
       if (exists.rows.length === 0) {
         await pool.query(
-          'INSERT INTO users (username, password, role) VALUES ($1,$2,$3)',
-          [u.username, demoHashed, u.role]
+          'INSERT INTO users (username, password, role, email, full_name) VALUES ($1,$2,$3,$4,$5)',
+          [u.username, demoHashed, u.role, u.email, u.full_name]
+        );
+      } else {
+        await pool.query(
+          `UPDATE users SET email = COALESCE(NULLIF(TRIM(email), ''), $2) WHERE username=$1`,
+          [u.username, u.email]
         );
       }
     }
@@ -376,11 +385,11 @@ async function seed() {
 
 function printCredentials() {
   console.log('');
-  console.log('Login accounts:');
-  console.log('  admin / admin123          (administrator)');
-  console.log('  pm1 / demo123             (project_manager)');
-  console.log('  trainer1 / demo123        (trainer)');
-  console.log('  staff1 / demo123          (staff)');
+  console.log('Login with email:');
+  console.log('  admin@wep.rw / admin123          (administrator)');
+  console.log('  pm1@wep.rw / demo123             (project_manager)');
+  console.log('  trainer1@wep.rw / demo123        (trainer)');
+  console.log('  staff1@wep.rw / demo123          (staff)');
 }
 
 seed();

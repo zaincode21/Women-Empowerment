@@ -1,6 +1,6 @@
 import { getUser } from './auth';
 
-export const ROLES = ['administrator', 'project_manager', 'trainer', 'staff'];
+export const ROLES = ['administrator', 'project_manager', 'trainer', 'staff', 'participant'];
 
 const PERMISSIONS = {
   dashboard: {
@@ -43,6 +43,10 @@ const PERMISSIONS = {
     read: ['administrator', 'staff'],
     write: ['administrator', 'staff'],
   },
+  portal: {
+    read: ['participant'],
+    write: ['participant'],
+  },
 };
 
 function normalizeRole(role) {
@@ -68,6 +72,7 @@ export function hasRole(...roles) {
 
 export const ROUTE_MODULES = {
   '/': 'dashboard',
+  '/portal': 'portal',
   '/participants': 'participants',
   '/trainers': 'trainers',
   '/trainings': 'trainings',

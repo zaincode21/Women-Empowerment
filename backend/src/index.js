@@ -12,6 +12,7 @@ const attendanceRoutes = require('./routes/attendance');
 const evaluationsRoutes = require('./routes/evaluations');
 const monitoringRoutes = require('./routes/monitoring');
 const reportsRoutes = require('./routes/reports');
+const meRoutes = require('./routes/me');
 const db = require('./db');
 const { loadDashboardAnalytics } = require('./lib/analytics');
 const { authenticate, requirePermission } = require('./middleware/auth');
@@ -20,6 +21,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api/me', meRoutes);
 app.use('/api/participants', participantsRoutes);
 app.use('/api/trainings', trainingsRoutes);
 app.use('/api/trainers', trainersRoutes);

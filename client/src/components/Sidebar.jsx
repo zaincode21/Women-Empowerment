@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { getUser } from '../lib/auth';
+import { getUser, clearAuth } from '../lib/auth';
 import { canAccess } from '../lib/permissions';
 import { NavIcon } from '../lib/navIcons';
 import Button from './ui/Button';
 
 const ALL_LINKS = [
+  { to: '/portal', label: 'My portal', module: 'portal', icon: 'dashboard' },
   { to: '/', label: 'Dashboard', module: 'dashboard', icon: 'dashboard' },
   { to: '/participants', label: 'Participants', module: 'participants', icon: 'participants' },
   { to: '/trainers', label: 'Trainers', module: 'trainers', icon: 'trainers' },
@@ -22,8 +23,7 @@ function formatRole(role) {
 }
 
 function logout() {
-  localStorage.removeItem('we_user');
-  localStorage.removeItem('we_token');
+  clearAuth();
   window.location.href = '/login';
 }
 
@@ -43,7 +43,7 @@ function Brand() {
 
 function UserCard({ user }) {
   if (!user) return null;
-  const initial = user.username?.charAt(0)?.toUpperCase() || '?';
+  const initial = (user.full_name || user.email || user.username)?.charAt(0)?.toUpperCase() || '?';
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
       <div className="flex items-center gap-3">
@@ -51,8 +51,11 @@ function UserCard({ user }) {
           {initial}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-slate-900">{user.username}</div>
-          <div className="truncate text-xs capitalize text-slate-500">{formatRole(user.role)}</div>
+          <div className="truncate text-sm font-medium text-slate-900">{user.full_name || user.username}</div>
+          <div className="truncate text-xs text-slate-500">{user.email || formatRole(user.role)}</div>
+          {user.email && (
+            <div className="truncate text-xs capitalize text-slate-400">{formatRole(user.role)}</div>
+          )}
         </div>
       </div>
     </div>

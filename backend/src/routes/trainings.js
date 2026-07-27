@@ -4,6 +4,20 @@ const db = require('../db');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
+router.get('/public', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT id, title, trainer_name, date, start_date, end_date, location, description
+       FROM trainings
+       ORDER BY COALESCE(start_date, date) DESC NULLS LAST, title ASC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.use(authenticate);
 router.use((req, res, next) => {
   const action = ['GET', 'HEAD'].includes(req.method) ? 'read' : 'write';

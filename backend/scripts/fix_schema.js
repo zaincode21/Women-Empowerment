@@ -109,7 +109,49 @@ async function fix() {
     console.log('Normalized user roles to lowercase');
 
     await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();');
-    console.log('Ensured users.created_at column exists');
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(255);');
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);');
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);');
+    console.log('Ensured users profile columns exist');
+
+    await pool.query('ALTER TABLE participants ADD COLUMN IF NOT EXISTS password VARCHAR(255);');
+    await pool.query('ALTER TABLE participants ADD COLUMN IF NOT EXISTS email VARCHAR(255);');
+    await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'pending'`);
+    await pool.query(`UPDATE participants SET status='approved' WHERE status IS NULL OR TRIM(status)=''`);
+    console.log('Ensured participants.password, email, and status columns exist');
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id SERIAL PRIMARY KEY,
+        account_type VARCHAR(20) NOT NULL,
+        account_id INT NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        token_hash VARCHAR(255) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    console.log('Ensured password_reset_tokens table exists');
+
+    // Backfill demo emails for staff users missing email
+    await pool.query(`
+      UPDATE users
+      SET email = LOWER(username) || '@wep.rw'
+      WHERE email IS NULL OR TRIM(email) = ''
+    `);
+
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique
+      ON users (LOWER(email))
+      WHERE email IS NOT NULL AND TRIM(email) <> ''
+    `);
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS participants_email_unique
+      ON participants (LOWER(email))
+      WHERE email IS NOT NULL AND TRIM(email) <> ''
+    `);
+    console.log('Ensured unique email indexes');
 
     console.log('Schema fix complete');
   } catch (err) {

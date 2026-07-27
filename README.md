@@ -26,7 +26,7 @@ cp .env.example .env
 npm install
 npm run migrate      # applies db/init.sql
 npm run fix-schema   # safe to re-run; patches legacy columns
-npm run seed         # creates admin user (default: admin / admin123)
+npm run seed         # creates admin user (default: admin@wep.rw / admin123)
 npm run dev          # starts API on http://localhost:4000
 ```
 
@@ -47,10 +47,10 @@ The Vite dev server proxies `/api` to the backend, so you can leave `VITE_API_BA
 
 Open http://localhost:5173 and sign in with:
 
-| Field    | Value      |
-|----------|------------|
-| Username | `admin`    |
-| Password | `admin123` |
+| Field    | Value           |
+|----------|-----------------|
+| Email    | `admin@wep.rw`  |
+| Password | `admin123`      |
 
 Override the seed password with `SEED_ADMIN_PASS` in `backend/.env` before running `npm run seed`.
 
@@ -65,7 +65,9 @@ Women-Empowerment/
 
 ## Features
 
-- **Participants** — CRUD with search by name
+- **Participants** — CRUD with search, status filter, and approve/reject for public registrations
+- **Participant portal** — participants see their trainings, attendance, evaluations, and certificate eligibility
+- **Forgot password** — email-based reset link for staff and participants
 - **Trainers & Trainings** — full management with Rwanda-style address fields
 - **Attendance** — record, edit, delete; 80% eligibility analytics
 - **Evaluations** — progress tracking with edit/delete
@@ -90,12 +92,14 @@ The first registered user (via seed or bootstrap register) becomes administrator
 
 ### Demo accounts (after `npm run seed`)
 
-| Username | Password | Role |
+| Email | Password | Role |
 |---|---|---|
-| `admin` | `admin123` (or `SEED_ADMIN_PASS`) | administrator |
-| `pm1` | `demo123` (or `SEED_DEMO_PASS`) | project_manager |
-| `trainer1` | `demo123` | trainer |
-| `staff1` | `demo123` | staff |
+| `admin@wep.rw` | `admin123` (or `SEED_ADMIN_PASS`) | administrator |
+| `pm1@wep.rw` | `demo123` (or `SEED_DEMO_PASS`) | project_manager |
+| `trainer1@wep.rw` | `demo123` | trainer |
+| `staff1@wep.rw` | `demo123` | staff |
+
+Login uses **email + password** for staff and participants.
 
 ## Environment variables
 

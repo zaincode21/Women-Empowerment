@@ -10,8 +10,8 @@ import EmptyState from '../components/ui/EmptyState';
 import { FormActions } from '../components/ui/RowActions';
 import { inputClassName } from '../components/ui/Field';
 
-const emptyCreate = { username: '', password: '', role: 'staff' };
-const emptyEdit = { username: '', role: 'staff' };
+const emptyCreate = { username: '', password: '', role: 'staff', full_name: '', email: '', phone_number: '' };
+const emptyEdit = { username: '', role: 'staff', full_name: '', email: '', phone_number: '' };
 
 function formatRole(role) {
   return role?.replace(/_/g, ' ') || '';
@@ -96,7 +96,13 @@ export default function Users() {
   }
 
   function openEdit(u) {
-    setEditForm({ username: u.username, role: u.role });
+    setEditForm({
+      username: u.username,
+      role: u.role,
+      full_name: u.full_name || '',
+      email: u.email || '',
+      phone_number: u.phone_number || '',
+    });
     setEditingId(u.id);
     setEditOpen(true);
   }
@@ -139,7 +145,10 @@ export default function Users() {
           <table className="data-table">
           <thead>
             <tr className="bg-slate-50 text-left">
+              <th className="p-3 border">Name</th>
               <th className="p-3 border">Username</th>
+              <th className="p-3 border">Email</th>
+              <th className="p-3 border">Phone</th>
               <th className="p-3 border">Role</th>
               <th className="p-3 border">Created</th>
               {writable && <th className="p-3 border">Actions</th>}
@@ -148,10 +157,13 @@ export default function Users() {
           <tbody>
             {list.map((u) => (
               <tr key={u.id} className="odd:bg-white even:bg-slate-50">
+                <td className="p-3 border font-medium text-slate-900">{u.full_name || '—'}</td>
                 <td className="p-3 border">
                   {u.username}
                   {u.id === currentUser?.id && <span className="ml-2 text-xs text-slate-500">(you)</span>}
                 </td>
+                <td className="p-3 border text-slate-600">{u.email || '—'}</td>
+                <td className="p-3 border text-slate-600">{u.phone_number || '—'}</td>
                 <td className="p-3 border capitalize">{formatRole(u.role)}</td>
                 <td className="p-3 border text-slate-600">
                   {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
@@ -186,6 +198,29 @@ export default function Users() {
         <form onSubmit={handleCreate} className="grid gap-3">
           <input
             required
+            minLength={2}
+            placeholder="Full name"
+            value={createForm.full_name}
+            onChange={(e) => setCreateForm({ ...createForm, full_name: e.target.value })}
+            className={inputClassName()}
+          />
+          <input
+            type="email"
+            required
+            placeholder="Email"
+            value={createForm.email}
+            onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+            className={inputClassName()}
+          />
+          <input
+            type="tel"
+            placeholder="Phone (optional)"
+            value={createForm.phone_number}
+            onChange={(e) => setCreateForm({ ...createForm, phone_number: e.target.value })}
+            className={inputClassName()}
+          />
+          <input
+            required
             minLength={3}
             placeholder="Username"
             value={createForm.username}
@@ -208,6 +243,29 @@ export default function Users() {
 
       <Modal title="Edit user" open={editOpen} onClose={() => setEditOpen(false)}>
         <form onSubmit={handleEdit} className="grid gap-3">
+          <input
+            required
+            minLength={2}
+            placeholder="Full name"
+            value={editForm.full_name}
+            onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+            className={inputClassName()}
+          />
+          <input
+            type="email"
+            required
+            placeholder="Email"
+            value={editForm.email}
+            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+            className={inputClassName()}
+          />
+          <input
+            type="tel"
+            placeholder="Phone"
+            value={editForm.phone_number}
+            onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
+            className={inputClassName()}
+          />
           <input
             required
             minLength={3}
