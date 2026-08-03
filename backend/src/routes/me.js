@@ -43,10 +43,12 @@ router.get('/portal', async (req, res) => {
     );
 
     const evaluationsResult = await db.query(
-      `SELECT id, progress, remarks, achievements, follow_up, next_review_at, created_at
-       FROM evaluations
-       WHERE participant_id = $1
-       ORDER BY created_at DESC`,
+      `SELECT e.id, e.progress, e.remarks, e.achievements, e.follow_up, e.next_review_at, e.created_at,
+              e.training_id, t.title AS training_title
+       FROM evaluations e
+       LEFT JOIN trainings t ON t.id = e.training_id
+       WHERE e.participant_id = $1
+       ORDER BY e.created_at DESC`,
       [participantId]
     );
 

@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { getSummary } from '../lib/api';
-import { canWrite } from '../lib/auth';
 import Sparkline from '../components/Sparkline';
 import { ProgramAnalytics } from '../components/ProgramAnalytics';
 import PageHeader from '../components/ui/PageHeader';
-import Button from '../components/ui/Button';
 
 function computeDelta(trends, key) {
   if (!trends || trends.length < 2) return null;
@@ -49,7 +46,6 @@ function RecentItem({ title, meta, created_at }) {
 
 export default function Dashboard() {
   const [summary, setSummary] = useState(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     getSummary().then(setSummary).catch(() => {});
@@ -76,8 +72,7 @@ export default function Dashboard() {
       />
 
       <div className="page-body">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatCard label="Participants" value={participants} delta={participantDelta} data={participantSeries} />
             <StatCard label="Trainings" value={trainings} delta={trainingDelta} data={trainingSeries} />
@@ -107,31 +102,6 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-        </div>
-
-        <aside className="space-y-4">
-          <div className="surface-card p-5">
-            <h4 className="mb-3 font-semibold text-slate-900">Quick actions</h4>
-            <div className="flex flex-col gap-2">
-              {canWrite('trainings') && (
-                <Button className="w-full" onClick={() => navigate('/trainings')}>Create training</Button>
-              )}
-              {canWrite('participants') && (
-                <Button variant="secondary" className="w-full" onClick={() => navigate('/participants')}>Add participant</Button>
-              )}
-              {canWrite('attendance') && (
-                <Button variant="secondary" className="w-full" onClick={() => navigate('/attendance')}>Record attendance</Button>
-              )}
-            </div>
-          </div>
-
-          <div className="surface-card p-5">
-            <h4 className="mb-3 font-semibold text-slate-900">At a glance</h4>
-            <div className="text-sm text-slate-600">Completion rate: {summary?.programCompletionRate ?? 0}%</div>
-            <div className="text-sm text-slate-600">Evaluations: {summary?.evaluations ?? 0}</div>
-            <div className="text-sm text-slate-600">Tracked pairs: {summary?.trackedPairs ?? 0}</div>
-          </div>
-        </aside>
       </div>
       </div>
     </div>

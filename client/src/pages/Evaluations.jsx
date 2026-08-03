@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createEvaluation, deleteEvaluation, getEvaluations, getParticipants, updateEvaluation } from '../lib/api';
+import { createEvaluation, deleteEvaluation, getEvaluations, getParticipants, getTrainings, updateEvaluation } from '../lib/api';
 import { canWrite } from '../lib/auth';
 import Modal from '../components/Modal';
 import ViewToggle from '../components/ViewToggle';
@@ -10,7 +10,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { RowActions, FormActions } from '../components/ui/RowActions';
 import { inputClassName } from '../components/ui/Field';
 
-const empty = { participant_id: '', progress: '', remarks: '', achievements: '', follow_up: '', next_review_at: '' };
+const empty = { participant_id: '', training_id: '', progress: '', remarks: '', achievements: '', follow_up: '', next_review_at: '' };
 
 function EvaluationCard({ e, writable, formatDateTime, onEdit, onDelete }) {
   const initial = e.participant_name?.charAt(0)?.toUpperCase() || '?';
@@ -22,6 +22,7 @@ function EvaluationCard({ e, writable, formatDateTime, onEdit, onDelete }) {
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="truncate font-semibold text-slate-900">{e.participant_name}</h3>
+          <p className="mt-0.5 truncate text-xs text-primary-700">{e.training_title || 'No training linked'}</p>
           <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{e.progress || 'No progress noted'}</p>
         </div>
       </div>
@@ -55,6 +56,7 @@ function EvaluationCard({ e, writable, formatDateTime, onEdit, onDelete }) {
 export default function Evaluations() {
   const [list, setList] = useState([]);
   const [participants, setParticipants] = useState([]);
+  const [trainings, setTrainings] = useState([]);
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState(null);
   const [open, setOpen] = useState(false);
@@ -73,8 +75,14 @@ export default function Evaluations() {
   }
 
   async function refresh() {
-    setList(await getEvaluations());
-    setParticipants(await getParticipants());
+    const [evaluations, parts, trains] = await Promise.all([
+      getEvaluations(),
+      getParticipants(),
+      getTrainings(),
+    ]);
+    setList(evaluations);
+    setParticipants(parts);
+    setTrainings(trains);
   }
 
   useEffect(() => { refresh(); }, []);
@@ -83,6 +91,7 @@ export default function Evaluations() {
     e.preventDefault();
     const payload = {
       participant_id: Number(form.participant_id),
+      training_id: form.training_id ? Number(form.training_id) : null,
       progress: form.progress,
       remarks: form.remarks,
       achievements: form.achievements,
@@ -115,6 +124,7 @@ export default function Evaluations() {
   function handleEdit(e) {
     setForm({
       participant_id: String(e.participant_id),
+      training_id: e.training_id ? String(e.training_id) : '',
       progress: e.progress || '',
       remarks: e.remarks || '',
       achievements: e.achievements || '',
@@ -138,6 +148,7 @@ export default function Evaluations() {
   const columns = (
     <>
       <th className="p-3 border">Participant</th>
+      <th className="p-3 border">Training</th>
       <th className="p-3 border">Progress</th>
       <th className="p-3 border">Achievements</th>
       <th className="p-3 border">Follow-up</th>
@@ -151,6 +162,7 @@ export default function Evaluations() {
     return (
       <tr key={e.id} className="odd:bg-white even:bg-slate-50">
         <td className="p-3 border align-middle">{e.participant_name}</td>
+        <td className="p-3 border align-middle">{e.training_title || '—'}</td>
         <td className="p-3 border align-middle">{e.progress}</td>
         <td className="p-3 border align-middle">{e.achievements}</td>
         <td className="p-3 border align-middle">{e.follow_up}</td>
@@ -172,7 +184,7 @@ export default function Evaluations() {
   return (
     <div className="page-shell">
       {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
-      <PageHeader title="Evaluations" description="Record participant progress, achievements, and follow-up plans.">
+      <PageHeader title="Evaluations" description="Record participant progress per training, achievements, and follow-up plans.">
         <ViewToggle value={view} onChange={setView} />
         {writable && <Button onClick={handleCreate}>Add evaluation</Button>}
       </PageHeader>
@@ -181,7 +193,7 @@ export default function Evaluations() {
         {list.length === 0 ? (
           <EmptyState
             title="No evaluations yet"
-            description="Create an evaluation to track participant progress."
+            description="Create an evaluation to track participant progress in a training."
             action={writable ? <Button onClick={handleCreate}>Add evaluation</Button> : null}
           />
         ) : view === 'table' ? (
@@ -214,6 +226,10 @@ export default function Evaluations() {
           <select required value={form.participant_id} onChange={(e) => setForm({ ...form, participant_id: e.target.value })} className={inputClassName()}>
             <option value="">Select participant</option>
             {participants.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+          </select>
+          <select value={form.training_id} onChange={(e) => setForm({ ...form, training_id: e.target.value })} className={inputClassName()}>
+            <option value="">Training (optional)</option>
+            {trainings.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
           </select>
           <input required placeholder="Progress" value={form.progress} onChange={(e) => setForm({ ...form, progress: e.target.value })} className={inputClassName()} />
           <input placeholder="Achievements" value={form.achievements} onChange={(e) => setForm({ ...form, achievements: e.target.value })} className={inputClassName()} />

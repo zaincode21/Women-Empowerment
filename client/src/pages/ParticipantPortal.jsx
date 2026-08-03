@@ -120,7 +120,12 @@ export default function ParticipantPortal() {
             <div className="mt-3 space-y-3">
               {evaluations.map((e) => (
                 <article key={e.id} className="rounded-lg border border-slate-100 bg-slate-50/70 p-4">
-                  <div className="text-xs text-slate-500">{formatDate(e.created_at)}</div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs text-slate-500">{formatDate(e.created_at)}</div>
+                    {e.training_title && (
+                      <div className="text-xs font-medium text-primary-700">{e.training_title}</div>
+                    )}
+                  </div>
                   <p className="mt-1 text-sm font-medium text-slate-900">{e.progress || 'Progress update'}</p>
                   {e.remarks && <p className="mt-1 text-sm text-slate-600">{e.remarks}</p>}
                   {e.achievements && <p className="mt-1 text-sm text-emerald-700">Achievements: {e.achievements}</p>}

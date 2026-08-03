@@ -333,7 +333,7 @@ async function seed() {
       }
     }
 
-    // Evaluations / monitoring progress
+    // Evaluations / monitoring progress (linked to a training when enrolled)
     const evaluations = [
       { pidIdx: 0, progress: 'Started a small produce stall', achievements: 'Opened stall at Gahanga market', follow_up: 'Link to micro-savings group', months: 4 },
       { pidIdx: 1, progress: 'Improved cash tracking', achievements: 'Keeps daily sales notebook', follow_up: 'Review pricing next month', months: 3 },
@@ -350,13 +350,23 @@ async function seed() {
     ];
 
     for (const ev of evaluations) {
+      const participantId = participantIds[ev.pidIdx];
+      const linked = await pool.query(
+        `SELECT training_id FROM training_enrollments
+         WHERE participant_id = $1
+         ORDER BY enrolled_at DESC
+         LIMIT 1`,
+        [participantId]
+      );
+      const trainingId = linked.rows[0]?.training_id || null;
       const nextReview = monthsAgo(Math.max(ev.months - 1, 0), 20);
       await pool.query(
         `INSERT INTO evaluations
-          (participant_id, progress, remarks, achievements, follow_up, next_review_at, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          (participant_id, training_id, progress, remarks, achievements, follow_up, next_review_at, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
         [
-          participantIds[ev.pidIdx],
+          participantId,
+          trainingId,
           ev.progress,
           'Recorded during field monitoring visit.',
           ev.achievements,

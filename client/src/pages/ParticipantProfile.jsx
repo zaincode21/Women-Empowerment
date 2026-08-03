@@ -182,6 +182,7 @@ export default function ParticipantProfile() {
           <table className="data-table text-sm">
             <thead>
               <tr className="text-left text-slate-500 border-b">
+                <th className="py-2 pr-4">Training</th>
                 <th className="py-2 pr-4">Progress</th>
                 <th className="py-2 pr-4">Remarks</th>
                 <th className="py-2 pr-4">Date</th>
@@ -190,13 +191,14 @@ export default function ParticipantProfile() {
             <tbody>
               {evaluations.map((e) => (
                 <tr key={e.id} className="border-b last:border-0">
+                  <td className="py-3 pr-4 text-slate-600">{e.training_title || '—'}</td>
                   <td className="py-3 pr-4 font-medium">{e.progress}</td>
                   <td className="py-3 pr-4 text-slate-600">{e.remarks || '—'}</td>
                   <td className="py-3 pr-4 text-slate-600">{formatDateTime(e.created_at)}</td>
                 </tr>
               ))}
               {evaluations.length === 0 && (
-                <tr><td colSpan="3" className="py-3 text-slate-500">No evaluations yet.</td></tr>
+                <tr><td colSpan="4" className="py-3 text-slate-500">No evaluations yet.</td></tr>
               )}
             </tbody>
           </table>

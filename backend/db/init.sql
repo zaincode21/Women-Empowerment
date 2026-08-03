@@ -84,11 +84,23 @@ CREATE TABLE IF NOT EXISTS attendance (
 CREATE TABLE IF NOT EXISTS evaluations (
   id SERIAL PRIMARY KEY,
   participant_id INT REFERENCES participants(id) ON DELETE CASCADE,
+  training_id INT REFERENCES trainings(id) ON DELETE SET NULL,
   progress TEXT,
   remarks TEXT,
   achievements TEXT,
   follow_up TEXT,
   next_review_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS report_snapshots (
+  id SERIAL PRIMARY KEY,
+  period_type VARCHAR(20) NOT NULL,
+  period_label VARCHAR(100) NOT NULL,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  trigger_source VARCHAR(20) NOT NULL DEFAULT 'scheduled',
+  summary JSONB NOT NULL DEFAULT '{}',
   created_at TIMESTAMP DEFAULT NOW()
 );
 

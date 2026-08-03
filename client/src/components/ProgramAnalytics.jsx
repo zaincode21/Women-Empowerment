@@ -19,7 +19,7 @@ function ChartCard({ title, subtitle, children }) {
     <div className="surface-card p-5">
       <div className="mb-4">
         <h3 className="font-semibold text-slate-900">{title}</h3>
-        {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
       </div>
       {children}
     </div>
@@ -28,6 +28,22 @@ function ChartCard({ title, subtitle, children }) {
 
 function EmptyChart({ message }) {
   return <div className="flex h-64 items-center justify-center text-sm text-slate-500">{message}</div>;
+}
+
+function DeltaBadge({ value, unit = '%' }) {
+  if (value === null || value === undefined) return null;
+  const positive = value > 0;
+  const neutral = value === 0;
+  const color = neutral
+    ? 'bg-slate-100 text-slate-600'
+    : positive
+      ? 'bg-emerald-50 text-emerald-700'
+      : 'bg-rose-50 text-rose-700';
+  return (
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${color}`}>
+      {positive ? '+' : ''}{value}{unit}
+    </span>
+  );
 }
 
 export function MonthlyTrendChart({ trends = [] }) {
@@ -146,6 +162,130 @@ export function EvaluationsTrendChart({ trends = [] }) {
   );
 }
 
+export function PeriodComparisonCards({ comparison }) {
+  if (!comparison?.current || !comparison?.previous) return null;
+  const { current, previous, deltas } = comparison;
+  const metrics = [
+    { label: 'Participants', value: current.participants, previous: previous.participants, delta: deltas.participants, unit: '%' },
+    { label: 'Trainings', value: current.trainings, previous: previous.trainings, delta: deltas.trainings, unit: '%' },
+    { label: 'Attendance', value: current.attendance, previous: previous.attendance, delta: deltas.attendance, unit: '%' },
+    { label: 'Attendance rate', value: `${current.attendanceRate}%`, previous: `${previous.attendanceRate}%`, delta: deltas.attendanceRate, unit: ' pts' },
+  ];
+
+  return (
+    <ChartCard
+      title="Period vs period"
+      subtitle={`${current.label} compared with ${previous.label}`}
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="rounded-lg border border-slate-100 bg-slate-50/70 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs text-slate-500">{metric.label}</div>
+              <DeltaBadge value={metric.delta} unit={metric.unit} />
+            </div>
+            <div className="mt-1 text-xl font-bold text-slate-900">{metric.value}</div>
+            <div className="mt-1 text-xs text-slate-500">Prev: {metric.previous}</div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-xs text-slate-500">
+        Previous month — participants {previous.participants}, trainings {previous.trainings},
+        attendance {previous.attendance}, evaluations {previous.evaluations}, rate {previous.attendanceRate}%.
+      </p>
+    </ChartCard>
+  );
+}
+
+export function DistrictComparisonChart({ data = [] }) {
+  const chartData = data.map((row) => ({
+    name: row.district?.length > 14 ? `${row.district.slice(0, 14)}…` : row.district,
+    fullName: row.district,
+    rate: row.attendance_rate,
+    participants: row.participants,
+  }));
+
+  return (
+    <ChartCard title="Attendance by district" subtitle="Compare participation quality across locations">
+      {chartData.length === 0 ? (
+        <EmptyChart message="No district data yet." />
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+            <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} unit="%" />
+            <Tooltip
+              formatter={(value, _name, props) => [`${value}% (${props.payload.participants} participants)`, 'Attendance']}
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName || ''}
+            />
+            <Bar dataKey="rate" fill="#0f766e" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </ChartCard>
+  );
+}
+
+export function TrainerPerformanceChart({ data = [] }) {
+  const chartData = data.map((row) => ({
+    name: row.trainer_name?.length > 16 ? `${row.trainer_name.slice(0, 16)}…` : row.trainer_name,
+    fullName: row.trainer_name,
+    rate: row.attendance_rate,
+    trainings: row.trainings,
+    evaluations: row.evaluations,
+  }));
+
+  return (
+    <ChartCard title="Trainer performance" subtitle="Attendance rate and evaluation volume by trainer">
+      {chartData.length === 0 ? (
+        <EmptyChart message="No trainer performance data yet." />
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} unit="%" />
+            <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
+            <Tooltip
+              formatter={(value, _name, props) => [
+                `${value}% · ${props.payload.trainings} trainings · ${props.payload.evaluations} evaluations`,
+                'Attendance rate',
+              ]}
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName || ''}
+            />
+            <Bar dataKey="rate" fill="#f59e0b" radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </ChartCard>
+  );
+}
+
+const insightStyles = {
+  success: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+  warning: 'border-amber-200 bg-amber-50 text-amber-900',
+  info: 'border-sky-200 bg-sky-50 text-sky-900',
+};
+
+export function DecisionInsights({ insights = [] }) {
+  if (!insights.length) return null;
+  return (
+    <ChartCard title="Decision insights" subtitle="Actionable signals from attendance, districts, and trainers">
+      <ul className="space-y-2">
+        {insights.map((item, idx) => (
+          <li
+            key={`${item.severity}-${idx}`}
+            className={`rounded-lg border px-3 py-2 text-sm ${insightStyles[item.severity] || insightStyles.info}`}
+          >
+            <span className="mr-2 text-xs font-semibold uppercase tracking-wide opacity-70">{item.severity}</span>
+            {item.text}
+          </li>
+        ))}
+      </ul>
+    </ChartCard>
+  );
+}
+
 export function ProgramAnalytics({ summary, showMetricCards = true }) {
   if (!summary) return null;
 
@@ -173,9 +313,14 @@ export function ProgramAnalytics({ summary, showMetricCards = true }) {
         </div>
       )}
 
+      <DecisionInsights insights={summary.insights || []} />
+      <PeriodComparisonCards comparison={summary.periodComparison} />
+
       <div className="grid gap-4 md:grid-cols-2">
         <MonthlyTrendChart trends={summary.trends || []} />
         <AttendanceByTrainingChart data={summary.attendanceByTraining || []} />
+        <DistrictComparisonChart data={summary.attendanceByDistrict || []} />
+        <TrainerPerformanceChart data={summary.trainerPerformance || []} />
         <EducationPieChart data={summary.participantsByEducation || []} />
         <EvaluationsTrendChart trends={summary.trends || []} />
       </div>

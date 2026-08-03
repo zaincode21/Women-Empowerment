@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const {
+  generateWeeklySnapshot,
+  generateMonthlySnapshot,
+} = require('../lib/reportGenerator');
 
 const ATTENDED_STATUSES = ['Present', 'Late'];
 
@@ -154,6 +158,7 @@ router.get('/progress', async (req, res) => {
           ELSE ROUND((att.attended_records::numeric / att.total_records) * 100)::int
         END AS attendance_rate,
         le.progress AS latest_progress,
+        le.training_title AS latest_training_title,
         le.created_at AS last_evaluation_at,
         COALESCE(ev.evaluation_count, 0)::int AS evaluation_count
       FROM participants p
@@ -166,10 +171,11 @@ router.get('/progress', async (req, res) => {
         GROUP BY participant_id
       ) att ON att.participant_id = p.id
       LEFT JOIN LATERAL (
-        SELECT progress, created_at
+        SELECT e.progress, e.created_at, t.title AS training_title
         FROM evaluations e
+        LEFT JOIN trainings t ON t.id = e.training_id
         WHERE e.participant_id = p.id
-        ORDER BY created_at DESC
+        ORDER BY e.created_at DESC
         LIMIT 1
       ) le ON true
       LEFT JOIN (
@@ -206,6 +212,10 @@ router.get('/evaluations', async (req, res) => {
       params.push(Number(req.query.participant_id));
       clauses.push(`e.participant_id = $${params.length}`);
     }
+    if (req.query.training_id) {
+      params.push(Number(req.query.training_id));
+      clauses.push(`e.training_id = $${params.length}`);
+    }
     clauses.push(...buildDateFilters(req.query, 'e.created_at', params));
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
@@ -215,6 +225,8 @@ router.get('/evaluations', async (req, res) => {
         e.id,
         e.participant_id,
         p.full_name AS participant_name,
+        e.training_id,
+        t.title AS training_title,
         e.progress,
         e.remarks,
         e.achievements,
@@ -223,6 +235,7 @@ router.get('/evaluations', async (req, res) => {
         e.created_at
       FROM evaluations e
       JOIN participants p ON p.id = e.participant_id
+      LEFT JOIN trainings t ON t.id = e.training_id
       ${where}
       ORDER BY e.created_at DESC`,
       params
@@ -239,6 +252,52 @@ router.get('/evaluations', async (req, res) => {
       summary: summaryResult.rows[0] || { total: 0 },
       rows: rowsResult.rows,
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/snapshots', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const result = await db.query(
+      `SELECT id, period_type, period_label, period_start, period_end, trigger_source, created_at
+       FROM report_snapshots
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/snapshots/:id', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT id, period_type, period_label, period_start, period_end, trigger_source, summary, created_at
+       FROM report_snapshots
+       WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/snapshots/generate', async (req, res) => {
+  try {
+    const periodType = String(req.body.period_type || 'weekly').toLowerCase();
+    const snap = periodType === 'monthly'
+      ? await generateMonthlySnapshot('manual')
+      : await generateWeeklySnapshot('manual');
+    res.status(201).json(snap);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

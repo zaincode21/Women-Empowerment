@@ -81,6 +81,21 @@ export function getEvaluationsReport(params = {}) {
   return request(`/api/reports/evaluations${reportQuery(params)}`);
 }
 
+export function getReportSnapshots(limit = 20) {
+  return request(`/api/reports/snapshots?limit=${limit}`);
+}
+
+export function getReportSnapshot(id) {
+  return request(`/api/reports/snapshots/${id}`);
+}
+
+export function generateReportSnapshot(periodType = 'weekly') {
+  return request('/api/reports/snapshots/generate', {
+    method: 'POST',
+    body: JSON.stringify({ period_type: periodType }),
+  });
+}
+
 export function getTrainers() {
   return request('/api/trainers');
 }

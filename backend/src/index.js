@@ -15,6 +15,7 @@ const reportsRoutes = require('./routes/reports');
 const meRoutes = require('./routes/me');
 const db = require('./db');
 const { loadDashboardAnalytics } = require('./lib/analytics');
+const { startReportScheduler } = require('./lib/scheduler');
 const { authenticate, requirePermission } = require('./middleware/auth');
 
 app.use(cors());
@@ -135,4 +136,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(port, () => console.log(`Server running on port ${port}`));
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+  startReportScheduler();
+});

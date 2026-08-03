@@ -68,10 +68,25 @@ async function fix() {
       `ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS follow_up TEXT;`,
       `ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS next_review_at TIMESTAMP;`,
       `ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();`,
+      `ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS training_id INT REFERENCES trainings(id) ON DELETE SET NULL;`,
     ];
     for (const sql of evaluationAlters) {
       await pool.query(sql);
     }
+
+    console.log('Ensuring report_snapshots table exists...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS report_snapshots (
+        id SERIAL PRIMARY KEY,
+        period_type VARCHAR(20) NOT NULL,
+        period_label VARCHAR(100) NOT NULL,
+        period_start DATE NOT NULL,
+        period_end DATE NOT NULL,
+        trigger_source VARCHAR(20) NOT NULL DEFAULT 'scheduled',
+        summary JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
 
     console.log('Ensuring training_enrollments table exists...');
     await pool.query(`

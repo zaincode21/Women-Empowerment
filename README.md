@@ -70,11 +70,12 @@ Women-Empowerment/
 - **Forgot password** — email-based reset link for staff and participants
 - **Trainers & Trainings** — full management with Rwanda-style address fields
 - **Attendance** — record, edit, delete; 80% eligibility analytics
-- **Evaluations** — progress tracking with edit/delete
+- **Evaluations** — progress tracking linked to trainings, with edit/delete
 - **Monitoring** — participant progress profiles, attendance rates, achievements, and activity timeline
-- **Reports** — summary, attendance, trainings, progress, and evaluation reports with filters and CSV export
+- **Reports** — summary, attendance, trainings, progress, and evaluation reports with filters; CSV, Excel, and PDF export
+- **Automated snapshots** — weekly/monthly scheduled report generation with on-demand PDF/Excel download
 - **Certificates** — PNG export with 80% attendance eligibility check
-- **Dashboard** — live stats, trends, program analytics charts, recent activity, quick actions
+- **Dashboard** — live stats, period comparison, district/trainer analytics, decision insights, charts, recent activity
 - **Users** (admin only) — create staff/administrator accounts
 
 ## Authentication & roles
@@ -149,6 +150,9 @@ Serve `client/dist` as static files and proxy `/api` requests to the backend.
 | GET    | `/api/reports/attendance` | Attendance report (filters: training_id, participant_id, from, to) |
 | GET    | `/api/reports/trainings` | Training report (filters: trainer_id, from, to) |
 | GET    | `/api/reports/progress` | Progress report (filter: participant_id) |
-| GET    | `/api/reports/evaluations` | Evaluation report (filters: participant_id, from, to) |
+| GET    | `/api/reports/evaluations` | Evaluation report (filters: participant_id, training_id, from, to) |
+| GET    | `/api/reports/snapshots` | List automated report snapshots |
+| GET    | `/api/reports/snapshots/:id` | Snapshot detail (metrics + insights) |
+| POST   | `/api/reports/snapshots/generate` | Manually generate weekly/monthly snapshot |
 
 See `backend/README.md` for additional backend notes.

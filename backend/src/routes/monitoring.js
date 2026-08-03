@@ -170,7 +170,11 @@ router.get('/participants/:id', async (req, res) => {
     );
 
     const evaluationsResult = await db.query(
-      `SELECT * FROM evaluations WHERE participant_id = $1 ORDER BY created_at DESC`,
+      `SELECT e.*, t.title AS training_title
+       FROM evaluations e
+       LEFT JOIN trainings t ON t.id = e.training_id
+       WHERE e.participant_id = $1
+       ORDER BY e.created_at DESC`,
       [participantId]
     );
 
