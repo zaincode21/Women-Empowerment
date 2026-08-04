@@ -36,9 +36,9 @@ function downloadBlob(filename, blob) {
   URL.revokeObjectURL(url);
 }
 
-/** @param {{ title: string, subtitle?: string, sections: Array<{ heading: string, headers?: string[], rows: any[][], summaryLines?: string[] }> }} options */
-export function downloadPdf({ title, subtitle, sections }) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+/** @param {{ title: string, subtitle?: string, orientation?: 'portrait' | 'landscape', sections: Array<{ heading: string, headers?: string[], rows: any[][], summaryLines?: string[] }> }} options */
+export function downloadPdf({ title, subtitle, orientation = 'portrait', sections }) {
+  const doc = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
   const margin = 40;
   let y = margin;
 

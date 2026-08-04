@@ -11,6 +11,7 @@ import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import { RowActions } from '../components/ui/RowActions';
 import { Field, inputClassName } from '../components/ui/Field';
+import { downloadPdf } from '../lib/export';
 
 const empty = { full_name: '', age: '', date_of_birth: '', village: '', cell: '', sector: '', district: '', province: '', address: '', phone_number: '', email: '', education_level: '', occupation: '' };
 
@@ -190,6 +191,30 @@ export default function Participants() {
     setOpen(true);
   }
 
+  function exportPdf() {
+    downloadPdf({
+      title: 'Participants Report',
+      subtitle: `${list.length} participant${list.length === 1 ? '' : 's'} · Generated ${new Date().toLocaleString()}`,
+      orientation: 'landscape',
+      sections: [{
+        heading: 'Participant list',
+        headers: ['Name', 'Age', 'Phone', 'Email', 'Education', 'Occupation', 'Village', 'District', 'Province', 'Status'],
+        rows: list.map((p) => [
+          p.full_name,
+          p.age ?? '',
+          p.phone_number || '',
+          p.email || '',
+          p.education_level || '',
+          p.occupation || '',
+          p.village || '',
+          p.district || '',
+          p.province || '',
+          p.status || 'approved',
+        ]),
+      }],
+    });
+  }
+
   return (
     <div className="page-shell">
       {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
@@ -215,6 +240,7 @@ export default function Participants() {
           <option value="rejected">Rejected</option>
         </select>
         <ViewToggle value={view} onChange={setView} />
+        <Button variant="secondary" onClick={exportPdf} disabled={list.length === 0}>Export PDF</Button>
         {writable && <Button onClick={handleCreate}>Add participant</Button>}
       </PageHeader>
 
