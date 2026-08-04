@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getSummary } from '../lib/api';
+import { canAccess } from '../lib/auth';
 import Sparkline from '../components/Sparkline';
 import { ProgramAnalytics } from '../components/ProgramAnalytics';
 import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
 
 function computeDelta(trends, key) {
   if (!trends || trends.length < 2) return null;
@@ -46,6 +49,7 @@ function RecentItem({ title, meta, created_at }) {
 
 export default function Dashboard() {
   const [summary, setSummary] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     getSummary().then(setSummary).catch(() => {});
@@ -69,7 +73,11 @@ export default function Dashboard() {
       <PageHeader
         title="Dashboard"
         description="Overview of program activity, attendance performance, and recent updates."
-      />
+      >
+        {canAccess('reports') && (
+          <Button onClick={() => navigate('/reports')}>Reports</Button>
+        )}
+      </PageHeader>
 
       <div className="page-body">
       <div className="space-y-6">

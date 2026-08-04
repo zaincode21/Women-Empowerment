@@ -4,8 +4,8 @@
   "private": true,
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "node api.js && node src/index.js",
+    "dev": "node api.js && nodemon src/index.js",
     "migrate": "node scripts/migrate.js",
     "fix-schema": "node scripts/fix_schema.js",
     "seed": "node scripts/seed.js"

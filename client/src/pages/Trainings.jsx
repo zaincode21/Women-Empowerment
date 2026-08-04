@@ -9,6 +9,7 @@ import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import { RowActions, FormActions } from '../components/ui/RowActions';
 import { inputClassName } from '../components/ui/Field';
+import { downloadPdf } from '../lib/export';
 
 const empty = { title: '', trainer_id: '', trainer_name: '', start_date: '', end_date: '', village: '', cell: '', sector: '', district: '', province: '', location: '', description: '' };
 
@@ -105,12 +106,38 @@ export default function Trainings() {
     });
   }
 
+  function formatDate(value) {
+    if (!value) return '';
+    return new Date(value).toLocaleDateString();
+  }
+
+  function exportPdf() {
+    downloadPdf({
+      title: 'Trainings Report',
+      subtitle: `${list.length} training${list.length === 1 ? '' : 's'} · Generated ${new Date().toLocaleString()}`,
+      orientation: 'landscape',
+      sections: [{
+        heading: 'Training list',
+        headers: ['Title', 'Trainer', 'Date', 'Location', 'District', 'Province', 'Description'],
+        rows: list.map((t) => [
+          t.title,
+          t.trainer_name || '',
+          formatDate(t.date || t.start_date),
+          t.location || '',
+          t.district || '',
+          t.province || '',
+          t.description || '',
+        ]),
+      }],
+    });
+  }
 
   return (
     <div className="page-shell">
       {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
       <PageHeader title="Trainings" description="Schedule and manage empowerment training sessions.">
         <ViewToggle value={view} onChange={setView} />
+        <Button variant="secondary" onClick={exportPdf} disabled={list.length === 0}>Export PDF</Button>
         {writable && <Button onClick={handleCreate}>Add training</Button>}
       </PageHeader>
 
