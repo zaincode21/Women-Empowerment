@@ -9,6 +9,7 @@ import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import { RowActions, FormActions } from '../components/ui/RowActions';
 import { inputClassName } from '../components/ui/Field';
+import { downloadPdf } from '../lib/export';
 
 const empty = { full_name: '', phone_number: '', email: '', specialization: '', village: '', cell: '', sector: '', district: '', province: '' };
 
@@ -103,11 +104,33 @@ export default function Trainers() {
     setOpen(true);
   }
 
+  function exportPdf() {
+    downloadPdf({
+      title: 'Trainers Report',
+      subtitle: `${list.length} trainer${list.length === 1 ? '' : 's'} · Generated ${new Date().toLocaleString()}`,
+      orientation: 'landscape',
+      sections: [{
+        heading: 'Trainer list',
+        headers: ['Name', 'Email', 'Phone', 'Specialization', 'Village', 'District', 'Province'],
+        rows: list.map((t) => [
+          t.full_name,
+          t.email || '',
+          t.phone_number || '',
+          t.specialization || '',
+          t.village || '',
+          t.district || '',
+          t.province || '',
+        ]),
+      }],
+    });
+  }
+
   return (
     <div className="page-shell">
       {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
       <PageHeader title="Trainers" description="Manage facilitators assigned to empowerment programs.">
         <ViewToggle value={view} onChange={setView} />
+        <Button variant="secondary" onClick={exportPdf} disabled={list.length === 0}>Export PDF</Button>
         {writable && <Button onClick={handleCreate}>Add trainer</Button>}
       </PageHeader>
 
